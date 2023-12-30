@@ -31,14 +31,23 @@ var rootCmd = &cobra.Command{
 	Args: cobra.MaximumNArgs(1),
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	RunE: func(cmd *cobra.Command, args []string) error { 
-		fmt.Println(cmd.Flags().GetBool("line"))
-		fmt.Println(cmd.Flags().GetBool("word"))
-		fmt.Println(cmd.Flags().GetBool("char"))
-		fmt.Println(args[0])
+	Run: func(cmd *cobra.Command, args []string) { 
+		lineCount, _ := cmd.Flags().GetBool("line")
+		wordCount, _ := cmd.Flags().GetBool("word")
+		charCount, _ := cmd.Flags().GetBool("char")
+		// fmt.Println(args[0])
 
-		
-		return nil
+
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Println("Cannot find the path: %w", err)
+		}
+		output, err := Run(os.DirFS(cwd), args[0], lineCount, wordCount, charCount)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		fmt.Fprint(os.Stdout, output)
 	},
 }
 

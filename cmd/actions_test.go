@@ -24,9 +24,10 @@ func TestRun(t *testing.T) {
 		{"only line count", true, false, false, fmt.Sprintf("       5 %s", file1Name)},
 		{"only word count", false, true, false, fmt.Sprintf("       6 %s", file1Name)},
 		{"only char count", false, false, true, fmt.Sprintf("      25 %s", file1Name)},
-		{"all counts", true, true, true, fmt.Sprintf("       5        6       25 %s", file1Name)},
+		{"all counts", false, false, false, fmt.Sprintf("       5        6       25 %s", file1Name)},
 		{"combination of line & char count", true, false, true, fmt.Sprintf("       5       25 %s", file1Name)},
-		
+		{"combination of word & char count", false, true, true, fmt.Sprintf("       6       25 %s", file1Name)},
+		{"combination of word & char count", false, true, true, fmt.Sprintf("       6       25 %s", file1Name)},
 	}
 
 	for _, tc := range testCases {

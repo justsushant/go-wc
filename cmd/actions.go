@@ -3,35 +3,46 @@ package cmd
 import (
 	"fmt"
 	"io/fs"
-	// "os"
 
 	"github.com/one2n-go-bootcamp/word-count/wc"
 )
 
 func Run(fs fs.FS, fileName string, lineCount, wordCount, charCount bool) (string, error) {
-	var out string
+	var options []wc.Option
 
 	data, err := wc.ReadFile(fs, fileName)
 	if err != nil {
-		fmt.Println(err)
-		return out, err
+		return "", err
+	}
+
+	if !lineCount && !wordCount && !charCount {
+		options = append(options, wc.CountLines, wc.CountWords, wc.CountChars)
 	}
 
 	if lineCount {
-		count := wc.CountLines(data)
-		out = fmt.Sprintf("%s%8d ", out, count)
+		options = append(options, wc.CountLines)
 	}
 	
 	if wordCount {
-		count := wc.CountWords(data)
-		out = fmt.Sprintf("%s%8d ", out, count)
+		options = append(options, wc.CountWords)
 	}
 	
 	if charCount {
-		count := wc.CountChars(data)
-		out = fmt.Sprintf("%s%8d ", out, count)
+		options = append(options, wc.CountChars)
 	}
 
-	out = fmt.Sprintf("%s%s", out, fileName)
+
+	out := Count(data, options...)
+	out += fileName + "\n"
 	return out, nil
+}
+
+// strings.builder can be used here
+func Count(content []byte, options ...wc.Option) string {
+	var out string
+	for _, option := range options {
+		out += fmt.Sprintf("%8d ", option(content))
+	}
+
+	return out
 }
