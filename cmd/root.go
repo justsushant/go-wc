@@ -18,7 +18,6 @@ package cmd
 // for right align, %8s
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -32,22 +31,18 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) { 
+		fs := os.DirFS(".")
+
 		lineCount, _ := cmd.Flags().GetBool("line")
 		wordCount, _ := cmd.Flags().GetBool("word")
 		charCount, _ := cmd.Flags().GetBool("char")
-		// fmt.Println(args[0])
 
+		err := run(fs, args, lineCount, wordCount, charCount, cmd.OutOrStdout(), cmd.ErrOrStderr())
 
-		cwd, err := os.Getwd()
 		if err != nil {
-			fmt.Println("Cannot find the path: %w", err)
+			os.Exit(1)
 		}
-		output, err := Run(os.DirFS(cwd), args[0], lineCount, wordCount, charCount)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		fmt.Fprint(os.Stdout, output)
+		os.Exit(0)
 	},
 }
 
@@ -71,7 +66,7 @@ func init() {
 	// when this action is called directly.
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
-	rootCmd.Args = cobra.ExactArgs(1)
+	// rootCmd.Args = cobra.ExactArgs(1)
 
 	rootCmd.PersistentFlags().BoolP("line", "l", false, "show line count")
 	rootCmd.PersistentFlags().BoolP("word", "w", false, "show word count")
