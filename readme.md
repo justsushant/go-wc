@@ -3,6 +3,9 @@
 issue with relative paths- suppose you're in a directory, you can't use paths like "../testdata/cmd_test/file1.txt" in tests (with os.DirFS(".")). this works with wc
 
 
+// wc_test
+file4.txt isn't working with tabs \t
+
 // cmd_test
 add permisson error test case
 

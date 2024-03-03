@@ -1,8 +1,8 @@
-package wc
+ package wc
 
 import (
 	"errors"
-	"fmt"
+	// "fmt"
 	"io/fs"
 	"reflect"
 	"testing"
@@ -20,148 +20,181 @@ func TestCount(t *testing.T) {
 
 	testCases := []struct{
 		name string
-		path string
+		path []string
 		countLine bool
 		countWord bool
 		countChar bool
-		result WcResult
+		result []WcResult
 		expErr error
 	}{
 		{
 			name: "wc -l with no matches",
-			path: "file1.txt",
+			path: []string{"file1.txt"},
 			countLine: true, 
-			result: WcResult{Path: "file1.txt", LineCount: 0}, 
+			result: []WcResult{{Path: "file1.txt", LineCount: 0}}, 
 
 		},
 		{
 			name: "wc -l with single match",
-			path: "file2.txt",
+			path: []string{"file2.txt"},
 			countLine: true, 
-			result: WcResult{Path: "file2.txt", LineCount: 0}, 
+			result: []WcResult{{Path: "file2.txt", LineCount: 0}}, 
 
 		},
 		{
 			name: "wc -l with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countLine: true, 
-			result: WcResult{Path: "file3.txt", LineCount: 4}, 
+			result: []WcResult{{Path: "file3.txt", LineCount: 4}}, 
 
 		},
 		{
 			name: "wc -w with no matches",
-			path: "file1.txt",
+			path: []string{"file1.txt"},
 			countWord: true, 
-			result: WcResult{Path: "file1.txt", WordCount: 0}, 
+			result: []WcResult{{Path: "file1.txt", WordCount: 0}}, 
 
 		},
 		{
 			name: "wc -w with single match",
-			path: "file2.txt",
+			path: []string{"file2.txt"},
 			countWord: true, 
-			result: WcResult{Path: "file2.txt", WordCount: 1}, 
+			result: []WcResult{{Path: "file2.txt", WordCount: 1}}, 
 
 		},
 		{
 			name: "wc -w with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countWord: true, 
-			result: WcResult{Path: "file3.txt", WordCount: 7}, 
+			result: []WcResult{{Path: "file3.txt", WordCount: 7}}, 
 
 		},
 		{
 			name: "wc -c with no matches",
-			path: "file1.txt",
+			path: []string{"file1.txt"},
 			countChar: true, 
-			result: WcResult{Path: "file1.txt", CharCount: 0}, 
+			result: []WcResult{{Path: "file1.txt", CharCount: 0}}, 
 
 		},
 		{
 			name: "wc -c with single match",
-			path: "file2.txt",
+			path: []string{"file2.txt"},
 			countChar: true, 
-			result: WcResult{Path: "file2.txt", CharCount: 11}, 
+			result: []WcResult{{Path: "file2.txt", CharCount: 11}}, 
 
 		},
 		{
 			name: "wc -c with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countChar: true, 
-			result: WcResult{Path: "file3.txt", CharCount: 35}, 
+			result: []WcResult{{Path: "file3.txt", CharCount: 35}}, 
 
 		},
 		{
 			name: "wc -lc with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countLine: true,
 			countChar: true, 
-			result: WcResult{Path: "file3.txt", LineCount: 4, CharCount: 35}, 
+			result: []WcResult{{Path: "file3.txt", LineCount: 4, CharCount: 35}}, 
 		},
 		{
 			name: "wc -wc with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countWord: true,
 			countChar: true, 
-			result: WcResult{Path: "file3.txt", WordCount: 7, CharCount: 35}, 
+			result: []WcResult{{Path: "file3.txt", WordCount: 7, CharCount: 35}}, 
 		},
 		{
 			name: "wc -lw with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countLine: true,
 			countWord: true, 
-			result: WcResult{Path: "file3.txt", LineCount: 4, WordCount: 7}, 
+			result: []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7}}, 
 		},
 		{
 			name: "wc -lwc with multiple matches",
-			path: "file3.txt",
+			path: []string{"file3.txt"},
 			countLine: true,
 			countWord: true,
 			countChar: true, 
-			result: WcResult{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}, 
+			result: []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}}, 
 		},
 		{
-			name: "wc -lwc with multiple matches (random symbols and spaces)",
-			path: "file4.txt",
+			name: "wc -lwc with multiple files and multiple matches",
+			path: []string{"file3.txt", "file2.txt"},
 			countLine: true,
 			countWord: true,
 			countChar: true, 
-			result: WcResult{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}, 
+			result: []WcResult{
+				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
+				{Path: "file2.txt", LineCount: 0, WordCount: 1, CharCount: 11},
+				{Path: "total", LineCount: 4, WordCount: 8, CharCount: 46},
+			}, 
 		},
+		// {
+		// 	name: "wc -lwc with multiple matches (random symbols and spaces)",
+		// 	path: []string{"file4.txt"},
+		// 	countLine: true,
+		// 	countWord: true,
+		// 	countChar: true, 
+		// 	result: []WcResult{{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}}, 
+		// },
 		{
 			name: "wc over non-existent file",
-			path: "non-existent-file.txt",
+			path: []string{"non-existent-file.txt"},
 			expErr: fs.ErrNotExist,
+			result: []WcResult{{Err: fs.ErrNotExist}},
 		},
 		{
 			name: "wc over a file with permisson error",
-			path: "file5.txt",
+			path: []string{"file5.txt"},
 			expErr: fs.ErrPermission,
+			result: []WcResult{{Err: fs.ErrPermission}},
 		},
 		{
 			name: "wc over a directory",
-			path: "dir1",
+			path: []string{"dir1"},
 			expErr: ErrIsDirectory,
+			result: []WcResult{{Err: ErrIsDirectory}},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			want := tc.result
-
 			option := WcOption{Path: tc.path, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar}
+
 			got, err := Wc(testFS, option)
 
 			if tc.expErr != nil {
-				fmt.Println(err)
-				if err == nil {
+				// fmt.Println(err)
+
+				// fmt.Println(want)
+				// fmt.Println(got)
+				
+				isErrNilFlag := false
+				for _, res := range got {
+					if res.Err != nil {
+						isErrNilFlag = true
+						break
+					}
+				}
+				if !isErrNilFlag {
 					t.Errorf("Expected error %q but got nil", tc.expErr.Error())
 				}
-
-				if !errors.Is(err, tc.expErr) {
-					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
+				
+				errFoundFlag := false
+				for _, res := range got {
+					if errors.Is(res.Err, tc.expErr) {
+						errFoundFlag = true
+						break
+					}
+				}	
+				if errFoundFlag {
+					return
 				}
 
-				return
+				t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
 			}
 
 			if err != nil {

@@ -14,7 +14,7 @@ var (
 )
 
 type WcOption struct {
-	Path string
+	Path []string
 	Stdin io.Reader
 	CountLine bool
 	CountWord bool
@@ -26,30 +26,42 @@ type WcResult struct {
 	LineCount int
 	WordCount int
 	CharCount int
-	grepError error
+	Err error
 }
 
-func Wc(fSys fs.FS, option WcOption) (WcResult, error) {
-	r, cleanup, err := getReader(fSys, option.Path, option.Stdin)
-	if err != nil {
-		return WcResult{}, err
-	}
-	defer cleanup()
+func Wc(fSys fs.FS, option WcOption) ([]WcResult, error) {
+	result := []WcResult{}
 
-	result, err := count(r, option)
-	if err != nil {
-		return WcResult{grepError: err}, err
+	for _, path := range option.Path {
+		r, cleanup, err := getReader(fSys, path, option.Stdin)
+		if err != nil {
+			result = append(result, WcResult{Err: err})
+			continue
+		}
+		// defer cleanup()
+
+		res, err := count(r, path, option)
+		if err != nil {
+			result = append(result, WcResult{Err: err})
+			continue
+		}
+		result = append(result, res)
+		cleanup()
+	}
+
+	if len(result) > 1 {
+		result = append(result, calcTotal(result))
 	}
 
 	return result, nil
 }
 
-func count(r io.Reader, option WcOption) (WcResult, error) {
+func count(r io.Reader, path string, option WcOption) (WcResult, error) {
 	var lineCount, wordCount, charCount int
 	spaceFlag := true
 
 	var result WcResult
-	result.Path = option.Path
+	result.Path = path
 
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanBytes)
@@ -131,3 +143,14 @@ func isValid(fSys fs.FS, path string) error {
 	return nil
 }
 
+func calcTotal(result []WcResult) WcResult {
+	total := WcResult{Path: "total"}
+
+	for _, res := range result {
+		total.LineCount += res.LineCount
+		total.WordCount += res.WordCount
+		total.CharCount += res.CharCount
+	}
+
+	return total
+}

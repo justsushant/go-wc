@@ -27,7 +27,6 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "wc",
 	Short: "command line program that implements Unix wc like functionality",
-	Args: cobra.MaximumNArgs(1),
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) { 

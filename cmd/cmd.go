@@ -9,7 +9,7 @@ import (
 )
 
 func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) error {
-	option := wc.WcOption{Path:args[0]}
+	option := wc.WcOption{Path: args}
 
 	// if no options provided
 	if !lineCount == wordCount == charCount {
@@ -28,24 +28,28 @@ func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdout
 		return err
 	}
 
-	output := formatResult(option, result)
-	fmt.Fprintln(stdout, output)
+	printResult(option, result, stdout, stderr)
 	return nil
 }
 
-func formatResult(option wc.WcOption, result wc.WcResult) string {
-	var output string
+func printResult(option wc.WcOption, result []wc.WcResult, stdout, stderr io.Writer) {
+	for _, res := range result {
+		if res.Err != nil {
+			fmt.Fprintln(stderr, res.Err.Error())
+			continue
+		}
 
-	if option.CountLine {
-		output += fmt.Sprintf("%8d ", result.LineCount)
+		var output string
+		if option.CountLine {
+			output += fmt.Sprintf("%8d ", res.LineCount)
+		}
+		if option.CountWord {
+			output += fmt.Sprintf("%8d ", res.WordCount)
+		}
+		if option.CountChar {
+			output += fmt.Sprintf("%8d ", res.CharCount)
+		}
+		output += res.Path
+		fmt.Fprintln(stdout, output)
 	}
-	if option.CountWord {
-		output += fmt.Sprintf("%8d ", result.WordCount)
-	}
-	if option.CountChar {
-		output += fmt.Sprintf("%8d ", result.CharCount)
-	}
-
-	output += option.Path
-	return output
 }

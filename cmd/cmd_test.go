@@ -13,7 +13,7 @@ import (
 func TestRun(t *testing.T) {
 	testCases := []struct{
 		name string
-		path string
+		path []string
 		countLine bool
 		countWord bool
 		countChar bool
@@ -28,65 +28,65 @@ func TestRun(t *testing.T) {
 		// },
 		{
 			name: "wc over non-existent-file",
-			path: "testdata/cmd_test/non-existent-file.txt",
+			path: []string{"testdata/cmd_test/non-existent-file.txt"},
 			expError: fs.ErrNotExist,
 		},
 		{
 			name: "wc over directory",
-			path: "testdata/cmd_test/testdir",
+			path: []string{"testdata/cmd_test/testdir"},
 			expError: wc.ErrIsDirectory,
 		},
 		{
 			name: "wc -l with no matches",
-			path: "testdata/cmd_test/file2.txt",
+			path: []string{"testdata/cmd_test/file2.txt"},
 			countLine: true, 
 			expResult: "       0 testdata/cmd_test/file2.txt\n",
 		},
 		{
 			name: "wc -l with matches",
-			path: "testdata/cmd_test/file1.txt",
+			path: []string{"testdata/cmd_test/file1.txt"},
 			countLine: true, 
 			expResult: "       5 testdata/cmd_test/file1.txt\n",
 		},
 		{
 			name: "wc -w with no matches",
-			path: "testdata/cmd_test/file2.txt",
+			path: []string{"testdata/cmd_test/file2.txt"},
 			countWord: true, 
 			expResult: "       0 testdata/cmd_test/file2.txt\n",
 		},
 		{
 			name: "wc -w with matches",
-			path: "testdata/cmd_test/file1.txt",
+			path: []string{"testdata/cmd_test/file1.txt"},
 			countWord: true, 
 			expResult: "      10 testdata/cmd_test/file1.txt\n",
 		},
 		{
 			name: "wc with -w with matches (extra spaces here and there)",
-			path: "testdata/cmd_test/file3.txt",
+			path: []string{"testdata/cmd_test/file3.txt"},
 			countWord: true, 
 			expResult: "      10 testdata/cmd_test/file3.txt\n",
 		},
 		{
 			name: "wc -c with no matches",
-			path: "testdata/cmd_test/file2.txt",
+			path: []string{"testdata/cmd_test/file2.txt"},
 			countChar: true, 
 			expResult: "       0 testdata/cmd_test/file2.txt\n",
 		},
 		{
 			name: "wc -c with matches",
-			path: "testdata/cmd_test/file1.txt",
+			path: []string{"testdata/cmd_test/file1.txt"},
 			countChar: true, 
 			expResult: "      56 testdata/cmd_test/file1.txt\n",
 		},
 		{
 			name: "wc -c with matches (extra spaces here and there)",
-			path: "testdata/cmd_test/file3.txt",
+			path: []string{"testdata/cmd_test/file3.txt"},
 			countChar: true, 
 			expResult: "      65 testdata/cmd_test/file3.txt\n",
 		},
 		{
 			name: "wc -lwc with matches",
-			path: "testdata/cmd_test/file1.txt",
+			path: []string{"testdata/cmd_test/file1.txt"},
 			countLine: true,
 			countWord: true,
 			countChar: true, 
@@ -94,11 +94,19 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name: "wc no options with matches",
-			path: "testdata/cmd_test/file1.txt",
+			path: []string{"testdata/cmd_test/file1.txt"},
 			countLine: false,
 			countWord: false,
 			countChar: false, 
 			expResult: "       5       10       56 testdata/cmd_test/file1.txt\n",
+		},
+		{
+			name: "wc multiple files and no options",
+			path: []string{"testdata/cmd_test/file3.txt", "testdata/cmd_test/file4.txt"},
+			countLine: false,
+			countWord: false,
+			countChar: false, 
+			expResult: "       5       10       65 testdata/cmd_test/file3.txt\n       7       10       76 testdata/cmd_test/file4.txt\n      12       20      141 total\n",
 		},
 	}
 
@@ -106,7 +114,7 @@ func TestRun(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var got, err bytes.Buffer
 			
-			_ = run(os.DirFS("../"), []string{tc.path}, tc.countLine, tc.countWord, tc.countChar, &got, &err)
+			_ = run(os.DirFS("../"), tc.path, tc.countLine, tc.countWord, tc.countChar, &got, &err)
 			want := tc.expResult
 
 			if tc.expError != nil {
