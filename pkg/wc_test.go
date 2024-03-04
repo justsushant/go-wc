@@ -1,6 +1,7 @@
- package wc
+package wc
 
 import (
+	"bytes"
 	"errors"
 	// "fmt"
 	"io/fs"
@@ -21,6 +22,7 @@ func TestCount(t *testing.T) {
 	testCases := []struct{
 		name string
 		path []string
+		stdin []byte
 		countLine bool
 		countWord bool
 		countChar bool
@@ -131,6 +133,14 @@ func TestCount(t *testing.T) {
 				{Path: "total", LineCount: 4, WordCount: 8, CharCount: 46},
 			}, 
 		},
+		{
+			name: "wc with stdin",
+			stdin: []byte("this\nis\na\nfile"),
+			countLine: true,
+			countWord: true,
+			countChar: true, 
+			result: []WcResult{{LineCount: 3, WordCount: 4, CharCount: 14}}, 
+		},
 		// {
 		// 	name: "wc -lwc with multiple matches (random symbols and spaces)",
 		// 	path: []string{"file4.txt"},
@@ -162,7 +172,14 @@ func TestCount(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			want := tc.result
-			option := WcOption{Path: tc.path, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar}
+			option := []WcOption{}
+			for _, p := range tc.path {
+				option = append(option, WcOption{Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
+			}
+
+			if tc.path == nil {
+				option = append(option, WcOption{Stdin: bytes.NewReader(tc.stdin), CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
+			}
 
 			got, err := Wc(testFS, option)
 

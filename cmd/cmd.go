@@ -8,18 +8,30 @@ import (
 	wc "github.com/one2n-go-bootcamp/word-count/pkg"
 )
 
-func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) error {
-	option := wc.WcOption{Path: args}
-
+func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) error {
 	// if no options provided
 	if !lineCount == wordCount == charCount {
-		option.CountLine = true
-		option.CountWord = true
-		option.CountChar = true
-	} else {
-		option.CountLine = lineCount
-		option.CountWord = wordCount
-		option.CountChar = charCount
+		lineCount = true
+		wordCount = true
+		charCount = true
+	}
+
+	option := []wc.WcOption{}
+	for _, arg := range args {
+		option = append(option, wc.WcOption{
+			Path: arg, 
+			CountLine: lineCount, 
+			CountWord: wordCount, 
+			CountChar: charCount,
+		})
+	}
+	if len(args) == 0 {
+		option = append(option, wc.WcOption{
+			Stdin: stdin,
+			CountLine: lineCount, 
+			CountWord: wordCount, 
+			CountChar: charCount,
+		})
 	}
 
 	result, err := wc.Wc(fSys, option)
@@ -28,11 +40,11 @@ func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdout
 		return err
 	}
 
-	printResult(option, result, stdout, stderr)
+	printResult(result, lineCount, wordCount, charCount, stdout, stderr)
 	return nil
 }
 
-func printResult(option wc.WcOption, result []wc.WcResult, stdout, stderr io.Writer) {
+func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) {
 	for _, res := range result {
 		if res.Err != nil {
 			fmt.Fprintln(stderr, res.Err.Error())
@@ -40,13 +52,13 @@ func printResult(option wc.WcOption, result []wc.WcResult, stdout, stderr io.Wri
 		}
 
 		var output string
-		if option.CountLine {
+		if lineCount {
 			output += fmt.Sprintf("%8d ", res.LineCount)
 		}
-		if option.CountWord {
+		if wordCount {
 			output += fmt.Sprintf("%8d ", res.WordCount)
 		}
-		if option.CountChar {
+		if charCount {
 			output += fmt.Sprintf("%8d ", res.CharCount)
 		}
 		output += res.Path

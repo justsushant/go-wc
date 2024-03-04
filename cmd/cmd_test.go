@@ -14,6 +14,7 @@ func TestRun(t *testing.T) {
 	testCases := []struct{
 		name string
 		path []string
+		stdin []byte
 		countLine bool
 		countWord bool
 		countChar bool
@@ -108,13 +109,23 @@ func TestRun(t *testing.T) {
 			countChar: false, 
 			expResult: "       5       10       65 testdata/cmd_test/file3.txt\n       7       10       76 testdata/cmd_test/file4.txt\n      12       20      141 total\n",
 		},
+		{
+			name: "wc with stdin",
+			path: []string{},
+			stdin: []byte("xyz abc"),
+			countLine: false,
+			countWord: false,
+			countChar: false, 
+			expResult: "       0        2        7 \n",
+		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var got, err bytes.Buffer
+			in := bytes.NewReader(tc.stdin)
 			
-			_ = run(os.DirFS("../"), tc.path, tc.countLine, tc.countWord, tc.countChar, &got, &err)
+			_ = run(os.DirFS("../"), tc.path, tc.countLine, tc.countWord, tc.countChar, in, &got, &err)
 			want := tc.expResult
 
 			if tc.expError != nil {

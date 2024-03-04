@@ -15,8 +15,6 @@ limitations under the License.
 */
 package cmd
 
-// for right align, %8s
-
 import (
 	"os"
 
@@ -36,7 +34,7 @@ var rootCmd = &cobra.Command{
 		wordCount, _ := cmd.Flags().GetBool("word")
 		charCount, _ := cmd.Flags().GetBool("char")
 
-		err := run(fs, args, lineCount, wordCount, charCount, cmd.OutOrStdout(), cmd.ErrOrStderr())
+		err := run(fs, args, lineCount, wordCount, charCount, cmd.InOrStdin() ,cmd.OutOrStdout(), cmd.ErrOrStderr())
 
 		if err != nil {
 			os.Exit(1)

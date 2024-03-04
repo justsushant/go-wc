@@ -14,7 +14,7 @@ var (
 )
 
 type WcOption struct {
-	Path []string
+	Path string
 	Stdin io.Reader
 	CountLine bool
 	CountWord bool
@@ -29,18 +29,18 @@ type WcResult struct {
 	Err error
 }
 
-func Wc(fSys fs.FS, option WcOption) ([]WcResult, error) {
+func Wc(fSys fs.FS, option []WcOption) ([]WcResult, error) {
 	result := []WcResult{}
 
-	for _, path := range option.Path {
-		r, cleanup, err := getReader(fSys, path, option.Stdin)
+	for _, op := range option {
+		r, cleanup, err := getReader(fSys, op.Path, op.Stdin)
 		if err != nil {
 			result = append(result, WcResult{Err: err})
 			continue
 		}
 		// defer cleanup()
 
-		res, err := count(r, path, option)
+		res, err := count(r, op)
 		if err != nil {
 			result = append(result, WcResult{Err: err})
 			continue
@@ -56,12 +56,12 @@ func Wc(fSys fs.FS, option WcOption) ([]WcResult, error) {
 	return result, nil
 }
 
-func count(r io.Reader, path string, option WcOption) (WcResult, error) {
+func count(r io.Reader, option WcOption) (WcResult, error) {
 	var lineCount, wordCount, charCount int
 	spaceFlag := true
 
 	var result WcResult
-	result.Path = path
+	result.Path = option.Path
 
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanBytes)
