@@ -14,6 +14,7 @@ var (
 )
 
 type WcOption struct {
+	OrigPath string
 	Path string
 	Stdin io.Reader
 	CountLine bool
@@ -61,7 +62,7 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	spaceFlag := true
 
 	var result WcResult
-	result.Path = option.Path
+	result.Path = option.OrigPath
 
 	scanner := bufio.NewScanner(r)
 	scanner.Split(bufio.ScanBytes)

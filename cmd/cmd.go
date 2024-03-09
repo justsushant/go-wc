@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
 
 	wc "github.com/one2n-go-bootcamp/word-count/pkg"
 )
@@ -18,18 +19,20 @@ func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin 
 
 	option := []wc.WcOption{}
 	for _, arg := range args {
+		relPath, _ := getRelPath(fSys, arg)
 		option = append(option, wc.WcOption{
-			Path: arg, 
-			CountLine: lineCount, 
-			CountWord: wordCount, 
+			OrigPath:  arg,
+			Path:      relPath,
+			CountLine: lineCount,
+			CountWord: wordCount,
 			CountChar: charCount,
 		})
 	}
 	if len(args) == 0 {
 		option = append(option, wc.WcOption{
-			Stdin: stdin,
-			CountLine: lineCount, 
-			CountWord: wordCount, 
+			Stdin:     stdin,
+			CountLine: lineCount,
+			CountWord: wordCount,
 			CountChar: charCount,
 		})
 	}
@@ -64,4 +67,22 @@ func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, std
 		output += res.Path
 		fmt.Fprintln(stdout, output)
 	}
+}
+
+func getRelPath(fSys fs.FS, arg string) (relPath string, err error) {
+	absPath, err := filepath.Abs(filepath.Clean(arg))
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	root := fmt.Sprintf("%s", fSys)
+	// fmt.Println("Root: ", root)
+	// fmt.Println("Abs Path: ", absPath)
+	relPath, err = filepath.Rel(root, absPath)
+	if err != nil {
+		return "", err
+	}
+
+	return relPath, nil
 }

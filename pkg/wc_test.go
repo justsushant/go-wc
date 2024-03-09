@@ -174,7 +174,7 @@ func TestCount(t *testing.T) {
 			want := tc.result
 			option := []WcOption{}
 			for _, p := range tc.path {
-				option = append(option, WcOption{Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
+				option = append(option, WcOption{OrigPath:p, Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
 			}
 
 			if tc.path == nil {

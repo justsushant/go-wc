@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) { 
-		fs := os.DirFS(".")
+		fs := os.DirFS("/")
 
 		lineCount, _ := cmd.Flags().GetBool("line")
 		wordCount, _ := cmd.Flags().GetBool("word")
