@@ -9,7 +9,7 @@ import (
 	wc "github.com/one2n-go-bootcamp/word-count/pkg"
 )
 
-func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) error {
+func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) bool {
 	// if no options provided
 	if !lineCount == wordCount == charCount {
 		lineCount = true
@@ -37,19 +37,16 @@ func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin 
 		})
 	}
 
-	result, err := wc.Wc(fSys, option)
-	if err != nil {
-		fmt.Fprintln(stderr, err.Error())
-		return err
-	}
-
-	printResult(result, lineCount, wordCount, charCount, stdout, stderr)
-	return nil
+	result := wc.Wc(fSys, option)
+	
+	return printResult(result, lineCount, wordCount, charCount, stdout, stderr)
 }
 
-func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) {
+func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) bool {
+	errFoundFlag := false
 	for _, res := range result {
 		if res.Err != nil {
+			errFoundFlag = true
 			fmt.Fprintln(stderr, res.Err.Error())
 			continue
 		}
@@ -67,6 +64,7 @@ func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, std
 		output += res.Path
 		fmt.Fprintln(stdout, output)
 	}
+	return errFoundFlag
 }
 
 func getRelPath(fSys fs.FS, arg string) (relPath string, err error) {

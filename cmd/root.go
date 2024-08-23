@@ -36,7 +36,7 @@ var rootCmd = &cobra.Command{
 
 		err := run(fs, args, lineCount, wordCount, charCount, cmd.InOrStdin() ,cmd.OutOrStdout(), cmd.ErrOrStderr())
 
-		if err != nil {
+		if !err {
 			os.Exit(1)
 		}
 		os.Exit(0)

@@ -3,7 +3,6 @@ package wc
 import (
 	"bytes"
 	"errors"
-	// "fmt"
 	"io/fs"
 	"reflect"
 	"testing"
@@ -181,45 +180,42 @@ func TestCount(t *testing.T) {
 				option = append(option, WcOption{Stdin: bytes.NewReader(tc.stdin), CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
 			}
 
-			got, err := Wc(testFS, option)
+			got := Wc(testFS, option)
 
-			if tc.expErr != nil {
-				// fmt.Println(err)
-
-				// fmt.Println(want)
-				// fmt.Println(got)
-				
-				isErrNilFlag := false
-				for _, res := range got {
-					if res.Err != nil {
-						isErrNilFlag = true
-						break
+			for _, g := range got {
+				if tc.expErr != nil {
+					isErrNilFlag := false
+					for _, res := range got {
+						if res.Err != nil {
+							isErrNilFlag = true
+							break
+						}
 					}
-				}
-				if !isErrNilFlag {
-					t.Errorf("Expected error %q but got nil", tc.expErr.Error())
-				}
-				
-				errFoundFlag := false
-				for _, res := range got {
-					if errors.Is(res.Err, tc.expErr) {
-						errFoundFlag = true
-						break
+					if !isErrNilFlag {
+						t.Errorf("Expected error %q but got nil", tc.expErr.Error())
 					}
-				}	
-				if errFoundFlag {
-					return
+					
+					errFoundFlag := false
+					for _, res := range got {
+						if errors.Is(res.Err, tc.expErr) {
+							errFoundFlag = true
+							break
+						}
+					}	
+					if errFoundFlag {
+						return
+					}
+	
+					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), g.Err.Error())
 				}
-
-				t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
-			}
-
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			if !reflect.DeepEqual(want, got) {
-				t.Errorf("Expected %v but got %v", want, got)
+	
+				if g.Err != nil {
+					t.Fatalf("Unexpected error: %v", g.Err)
+				}
+	
+				if !reflect.DeepEqual(want, got) {
+					t.Errorf("Expected %v but got %v", want, got)
+				}
 			}
 		})
 	}

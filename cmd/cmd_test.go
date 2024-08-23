@@ -21,17 +21,16 @@ func TestRun(t *testing.T) {
 		expResult string
 		expError error
 	}{
-		// {
-		// 	name: "wc with -l with matches",
-		// 	path: "../testdata/cmd_test/file1.txt",
-		// 	countLine: true, 
-		// 	expResult: "       6 ../testdata/cmd_test/file1.txt\n",
-		// },
 		{
 			name: "wc over non-existent-file",
 			path: []string{"../testdata/cmd_test/non-existent-file.txt"},
 			expError: fs.ErrNotExist,
 		},
+		// {
+		// 	name: "wc over unsufficient permission file",
+		// 	path: []string{"../testdata/cmd_test/file5.txt"},
+		// 	expError: fs.ErrPermission,
+		// },
 		{
 			name: "wc over directory",
 			path: []string{"../testdata/cmd_test/testdir"},
