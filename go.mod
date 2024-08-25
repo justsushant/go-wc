@@ -1,4 +1,4 @@
-module github.com/one2n-go-bootcamp/word-count
+module github.com/one2n-go-bootcamp/go-wc
 
 go 1.21.3
 

@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	wc "github.com/one2n-go-bootcamp/word-count/pkg"
+	wc "github.com/one2n-go-bootcamp/go-wc/pkg"
 )
 
 func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) bool {
@@ -38,7 +38,7 @@ func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin 
 	}
 
 	result := wc.Wc(fSys, option)
-	
+
 	return printResult(result, lineCount, wordCount, charCount, stdout, stderr)
 }
 

@@ -33,7 +33,7 @@ type WcResult struct {
 
 func Wc(fSys fs.FS, option []WcOption) []WcResult {
 	var wg sync.WaitGroup
-	var outputChans = make([]chan WcResult, len(option))	// to aggregate the channels
+	var outputChans = make([]chan WcResult, len(option)) // to aggregate the channels
 	result := []WcResult{}
 
 	for i, op := range option {
@@ -80,7 +80,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 
 func count(r io.Reader, option WcOption) (WcResult, error) {
 	var lineCount, wordCount, charCount int
-	spaceFlag := true	// to keep track of previous whitespace
+	spaceFlag := true // to keep track of previous whitespace
 
 	var result WcResult
 	result.Path = option.OrigPath
@@ -90,13 +90,13 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	for scanner.Scan() {
 		// counting char
 		if option.CountChar {
-			charCount ++
+			charCount++
 		}
 
 		// counting line
 		if option.CountLine {
 			if scanner.Text() == "\n" {
-				lineCount ++
+				lineCount++
 			}
 		}
 
@@ -108,7 +108,7 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 			}
 			// if previous byte was whitespace, and current one isn't, count it word
 			if spaceFlag && !unicode.IsSpace(rune(scanner.Bytes()[0])) {
-				wordCount ++
+				wordCount++
 				spaceFlag = false
 			}
 		}
