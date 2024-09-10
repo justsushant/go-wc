@@ -11,7 +11,7 @@ import (
 
 func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) bool {
 	// if no options provided
-	if !lineCount == wordCount == charCount {
+	if !lineCount && !wordCount && !charCount {
 		lineCount = true
 		wordCount = true
 		charCount = true

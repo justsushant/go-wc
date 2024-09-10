@@ -172,7 +172,7 @@ func setTestForPermissonCase(t *testing.T, filePath, content string) (func() err
         return nil, err
     }
 
-    // Define the cleanup function
+    // deletes the file after test
     cleanup := func() error {
 		file.Close()
         if err := os.Remove(filePath); err != nil {
