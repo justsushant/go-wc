@@ -27,8 +27,8 @@ func TestRun(t *testing.T) {
 			expError: fs.ErrNotExist,
 		},
 		{
-			name: "wc over unsufficient permission file",
-			path: []string{"../testdata/cmd_test/file5.txt"},
+			name:     "wc over unsufficient permission file",
+			path:     []string{"../testdata/cmd_test/file5.txt"},
 			expError: fs.ErrPermission,
 		},
 		{
@@ -131,7 +131,17 @@ func TestRun(t *testing.T) {
 			var got, err bytes.Buffer
 			in := bytes.NewReader(tc.stdin)
 
-			_ = run(os.DirFS("/"), tc.path, tc.countLine, tc.countWord, tc.countChar, in, &got, &err)
+			input := &WcInput{
+				files:     tc.path,
+				lineCount: tc.countLine,
+				wordCount: tc.countWord,
+				charCount: tc.countChar,
+				stdin:     in,
+				stdout:    &got,
+				stderr:    &err,
+			}
+
+			_ = run(os.DirFS("/"), input)
 			want := tc.expResult
 
 			if tc.expError != nil {
@@ -155,31 +165,31 @@ func TestRun(t *testing.T) {
 
 func setTestForPermissonCase(t *testing.T, filePath, content string) (func() error, error) {
 	t.Helper()
-	
+
 	// creating file
-    file, err := os.Create(filePath)
-    if err != nil {
-        return nil, err
-    }
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
 
 	// writing to file
-    if _, err := file.WriteString(content); err != nil {
-        return nil, err
-    }
+	if _, err := file.WriteString(content); err != nil {
+		return nil, err
+	}
 
 	// setting permisson to 0000
-    if err := os.Chmod(filePath, 0000); err != nil {
-        return nil, err
-    }
+	if err := os.Chmod(filePath, 0000); err != nil {
+		return nil, err
+	}
 
-    // deletes the file after test
-    cleanup := func() error {
+	// deletes the file after test
+	cleanup := func() error {
 		file.Close()
-        if err := os.Remove(filePath); err != nil {
-            return err
-        }
-        return nil
-    }
+		if err := os.Remove(filePath); err != nil {
+			return err
+		}
+		return nil
+	}
 
-    return cleanup, nil
+	return cleanup, nil
 }

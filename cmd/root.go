@@ -27,14 +27,25 @@ var rootCmd = &cobra.Command{
 	Short: "command line program that implements Unix wc like functionality",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) { 
+	Run: func(cmd *cobra.Command, args []string) {
 		fs := os.DirFS("/")
 
 		lineCount, _ := cmd.Flags().GetBool("line")
 		wordCount, _ := cmd.Flags().GetBool("word")
 		charCount, _ := cmd.Flags().GetBool("char")
 
-		err := run(fs, args, lineCount, wordCount, charCount, cmd.InOrStdin() ,cmd.OutOrStdout(), cmd.ErrOrStderr())
+		// centralises all the user input in a single constuct
+		input := &WcInput{
+			files:     args,
+			lineCount: lineCount,
+			wordCount: wordCount,
+			charCount: charCount,
+			stdin:     cmd.InOrStdin(),
+			stdout:    cmd.OutOrStdout(),
+			stderr:    cmd.ErrOrStderr(),
+		}
+
+		err := run(fs, input)
 
 		if !err {
 			os.Exit(1)
