@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"io/fs"
 	"os"
 	"strings"
@@ -192,4 +193,182 @@ func setTestForPermissonCase(t *testing.T, filePath, content string) (func() err
 	}
 
 	return cleanup, nil
+}
+
+func TestPrintResult(t *testing.T) {
+	var buffOut, buffErr bytes.Buffer
+
+	tt := []struct {
+		name            string
+		result          []wc.WcResult
+		input           WcInput
+		expOut          bool
+		expTextInStdOut string
+		expTextInStdErr string
+	}{
+		{
+			name: "normal case/case with no errors",
+			result: []wc.WcResult{
+				{
+					Path:      "qwerty",
+					LineCount: 8,
+					WordCount: 4,
+					CharCount: 6,
+				},
+				{
+					Path:      "asdfg",
+					LineCount: 4,
+					WordCount: 5,
+					CharCount: 7,
+				},
+				{
+					Path:      "total",
+					LineCount: 12,
+					WordCount: 9,
+					CharCount: 13,
+				},
+			},
+			input: WcInput{
+				lineCount: true,
+				wordCount: true,
+				charCount: true,
+				stdout:    &buffOut,
+				stderr:    &buffErr,
+			},
+			expOut:          false,
+			expTextInStdOut: "       8        4        6 qwerty\n       4        5        7 asdfg\n      12        9       13 total\n",
+			expTextInStdErr: "",
+		},
+		{
+			name: "case with one error",
+			result: []wc.WcResult{
+				{
+					Path:      "qwerty",
+					LineCount: 8,
+					WordCount: 4,
+					CharCount: 6,
+				},
+				{
+					Path:      "asdfg",
+					LineCount: 4,
+					WordCount: 5,
+					CharCount: 7,
+				},
+				{
+					Err: errors.New("sample error here"),
+				},
+				{
+					Path:      "total",
+					LineCount: 12,
+					WordCount: 9,
+					CharCount: 13,
+				},
+			},
+			input: WcInput{
+				lineCount: true,
+				wordCount: true,
+				charCount: true,
+				stdout:    &buffOut,
+				stderr:    &buffErr,
+			},
+			expOut:          true,
+			expTextInStdOut: "       8        4        6 qwerty\n       4        5        7 asdfg\n      12        9       13 total\n",
+			expTextInStdErr: "sample error here\n",
+		},
+		{
+			name: "case with only error",
+			result: []wc.WcResult{
+				{
+					Err: errors.New("sample error here"),
+				},
+			},
+			input: WcInput{
+				lineCount: true,
+				wordCount: true,
+				charCount: true,
+				stdout:    &buffOut,
+				stderr:    &buffErr,
+			},
+			expOut:          true,
+			expTextInStdOut: "",
+			expTextInStdErr: "sample error here\n",
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got := printResult(tc.result, &tc.input)
+
+			// check the return value of the function
+			if got != tc.expOut {
+				t.Errorf("Expected %v but got %v", tc.expOut, got)
+			}
+
+			// check the relevant writer for the expected output
+			if buffOut.String() != tc.expTextInStdOut {
+				t.Errorf("Expected %q but got %q", tc.expTextInStdOut, buffOut.String())
+			}
+			if buffErr.String() != tc.expTextInStdErr {
+				t.Errorf("Expected %q but got %q", tc.expTextInStdErr, buffErr.String())
+			}
+
+			// clearing both buffers to be used in next test
+			buffOut.Reset()
+			buffErr.Reset()
+		})
+	}
+}
+
+// TODO: try to get a case where an error is thrown
+func TestGetRelPath(t *testing.T) {
+	tt := []struct {
+		name   string
+		fSys   fs.FS
+		path   string
+		expOut string
+		expErr error
+	}{
+		{
+			name:   "normal case with valid path",
+			path:   "testdata/file1.txt",
+			expOut: "testdata/file1.txt",
+			expErr: nil,
+		},
+		{
+			name:   "normal case with valid path with a lot of back and forth",
+			path:   "pkg/../testdata/testdir/../file4.txt",
+			expOut: "testdata/file4.txt",
+			expErr: nil,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			wd, err := os.Getwd()
+			if err != nil {
+				t.Fatalf("Unexpected error while getting current working directory: %v", err)
+			}
+
+			gotPath, gotErr := getRelPath(os.DirFS(wd), tc.path)
+			if tc.expErr != nil {
+				if gotErr == nil {
+					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
+				}
+
+				if !errors.Is(err, tc.expErr) {
+					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
+				}
+
+				return
+			}
+
+			if gotErr != nil {
+				t.Errorf("Unexpected error occurred: %v", gotErr)
+			}
+
+			if gotPath != tc.expOut {
+				t.Errorf("Expected %q but got %q", tc.expOut, gotPath)
+			}
+		})
+	}
 }
