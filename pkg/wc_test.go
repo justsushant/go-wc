@@ -176,6 +176,8 @@ func TestWc(t *testing.T) {
 
 			got := Wc(testFS, option)
 
+			// iterating over the WcResult slice
+			// we're using boolean flags to figure out if any errors were present in any of the result
 			for _, g := range got {
 				if tc.expErr != nil {
 					isErrNilFlag := false
@@ -204,7 +206,7 @@ func TestWc(t *testing.T) {
 				}
 
 				if g.Err != nil {
-					t.Fatalf("Unexpected error: %v", g.Err)
+					t.Fatalf("Unexpected error: %q", g.Err.Error())
 				}
 
 				// this warning has to be fixed since can't use it with the errors
@@ -279,18 +281,18 @@ func TestCount(t *testing.T) {
 
 			if tc.expErr != nil {
 				if err == nil {
-					t.Fatalf("Expected error %v but got nil", tc.expErr)
+					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
 				}
 
 				if !errors.Is(err, tc.expErr) {
-					t.Fatalf("Expected error %v but got %v", tc.expErr, err)
+					t.Fatalf("Expected error %q but got %v", tc.expErr.Error(), err.Error())
 				}
 
 				return
 			}
 
 			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
+				t.Fatalf("Unexpected error: %q", err.Error())
 			}
 
 			// avoiding the usage of reflect.DeepEqual because not a good practice to use it with errors
@@ -311,5 +313,252 @@ func TestCount(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestGetReader(t *testing.T) {
+	testFS := fstest.MapFS{
+		"file1.txt": {Data: []byte(""), Mode: 0755},
+		"file2.txt": {Data: []byte("single_line"), Mode: 0755},
+		"file3.txt": {Data: []byte("single line\nand\ndouble line\nin\nfile"), Mode: 0755},
+		"file4.txt": {Data: []byte("\nI love mangoes,\tapples- but it applies to most fruits.\n??--ww"), Mode: 0755},
+		"file5.txt": {Data: []byte("this file got permisson error"), Mode: 0000},
+		"dir1":      {Mode: fs.ModeDir},
+	}
+
+	tt := []struct {
+		name            string
+		option          WcOption
+		expTextInReader string
+		expErr          error
+	}{
+		{
+			name: "nomal happy case with valid path",
+			option: WcOption{
+				Path:  "file2.txt",
+				Stdin: nil,
+			},
+			expTextInReader: "single_line",
+			expErr:          nil,
+		},
+		{
+			name: "nomal happy case with empty path and valid stdin",
+			option: WcOption{
+				Path:  "",
+				Stdin: bytes.NewReader([]byte("text from stdin\n here")),
+			},
+			expTextInReader: "text from stdin\n here",
+			expErr:          nil,
+		},
+		{
+			name: "error unhappy case with invalid path of file",
+			option: WcOption{
+				Path:  "invalid_file.txt",
+				Stdin: nil,
+			},
+			expTextInReader: "",
+			expErr:          fs.ErrNotExist,
+		},
+		{
+			name: "error unhappy case with valid path of directory",
+			option: WcOption{
+				Path:  "dir1",
+				Stdin: nil,
+			},
+			expTextInReader: "",
+			expErr:          ErrIsDirectory,
+		},
+		{
+			name: "error unhappy case with valid path of file but permisson error",
+			option: WcOption{
+				Path:  "file5.txt",
+				Stdin: nil,
+			},
+			expTextInReader: "",
+			expErr:          fs.ErrPermission,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			reader, cleanup, err := getReader(testFS, tc.option)
+			if tc.expErr != nil {
+				if err == nil {
+					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
+				}
+
+				if !errors.Is(err, tc.expErr) {
+					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Unexpected error: %q", err.Error())
+			}
+
+			// checking if the reader has the same text as we expected
+			data, err := io.ReadAll(reader)
+			if err != nil {
+				t.Fatalf("Unexpected error while reading from io.Reader, %q", err.Error())
+			}
+			if string(data) != tc.expTextInReader {
+				t.Errorf("Expected the reader to have %q but got %q", tc.expTextInReader, string(data))
+			}
+
+			// TODO: testing the behaviour of cleanup function
+			// maybe we have to find a way to check if the file is still open (that would be too coupled to the implementation)
+			// we can also do some kind of mock counter thing where the cleanup function would be injected from arguments and we will check if the counter has been incremented
+			// very unclear what to do here
+			cleanup()
+		})
+	}
+}
+
+func TestIsValid(t *testing.T) {
+	testFS := fstest.MapFS{
+		"file1.txt": {Data: []byte(""), Mode: 0755},
+		"file2.txt": {Data: []byte("single_line"), Mode: 0755},
+		"file3.txt": {Data: []byte("single line\nand\ndouble line\nin\nfile"), Mode: 0755},
+		"file4.txt": {Data: []byte("\nI love mangoes,\tapples- but it applies to most fruits.\n??--ww"), Mode: 0755},
+		"file5.txt": {Data: []byte("this file got permisson error"), Mode: 0000},
+		"dir1":      {Mode: fs.ModeDir},
+	}
+
+	tt := []struct {
+		name            string
+		path            string
+		expTextInReader string
+		expErr          error
+	}{
+		{
+			name:   "nomal happy case with valid path",
+			path:   "file2.txt",
+			expErr: nil,
+		},
+		{
+			name:   "error unhappy case with empty path",
+			path:   "",
+			expErr: fs.ErrNotExist,
+		},
+		{
+			name:   "error unhappy case with invalid path of file",
+			path:   "xyz.txt",
+			expErr: fs.ErrNotExist,
+		},
+		{
+			name:   "error unhappy case with valid path of directory",
+			path:   "dir1",
+			expErr: ErrIsDirectory,
+		},
+		{
+			name:   "error unhappy case with valid path of file but permisson error",
+			path:   "file5.txt",
+			expErr: fs.ErrPermission,
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			err := isValid(testFS, tc.path)
+			if tc.expErr != nil {
+				if err == nil {
+					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
+				}
+
+				if !errors.Is(err, tc.expErr) {
+					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Unexpected error: %q", err.Error())
+			}
+		})
+	}
+}
+
+func TestCalcTotal(t *testing.T) {
+	tt := []struct {
+		name   string
+		input  []WcResult
+		expOut WcResult
+	}{
+		{
+			name: "nomal case with all non-zero fields",
+			input: []WcResult{
+				{
+					LineCount: 1,
+					WordCount: 2,
+					CharCount: 3,
+				},
+				{
+					LineCount: 4,
+					WordCount: 5,
+					CharCount: 6,
+				},
+				{
+					LineCount: 7,
+					WordCount: 8,
+					CharCount: 9,
+				},
+			},
+			expOut: WcResult{
+				Path:      "total",
+				LineCount: 12,
+				WordCount: 15,
+				CharCount: 18,
+			},
+		},
+		{
+			name: "nomal case with all zero fields",
+			input: []WcResult{
+				{
+					LineCount: 0,
+					WordCount: 0,
+					CharCount: 0,
+				},
+				{
+					LineCount: 0,
+					WordCount: 0,
+					CharCount: 0,
+				},
+			},
+			expOut: WcResult{
+				Path:      "total",
+				LineCount: 0,
+				WordCount: 0,
+				CharCount: 0,
+			},
+		},
+		{
+			name:  "error case with no result elements",
+			input: []WcResult{},
+			expOut: WcResult{
+				Path: "total",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		t.Run(tc.name, func(t *testing.T) {
+			got := calcTotal(tc.input)
+
+			// avoiding the usage of reflect.DeepEqual because not a good practice to use it with errors
+			if tc.expOut.Path != got.Path {
+				t.Errorf("Expected the path %v but got %v", tc.expOut.Path, got.Path)
+			}
+			if tc.expOut.LineCount != got.LineCount {
+				t.Errorf("Expected the line count %v but got %v", tc.expOut.LineCount, got.LineCount)
+			}
+			if tc.expOut.WordCount != got.WordCount {
+				t.Errorf("Expected the word count %v but got %v", tc.expOut.WordCount, got.WordCount)
+			}
+			if tc.expOut.CharCount != got.CharCount {
+				t.Errorf("Expected the char count %v but got %v", tc.expOut.CharCount, got.CharCount)
+			}
+		})
+	}
 }
