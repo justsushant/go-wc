@@ -47,7 +47,8 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 			defer close(outputChan)
 
 			// getting the reader and making checks
-			r, cleanup, err := getReader(fSys, op.Path, op.Stdin)
+			r, cleanup, err := getReader(fSys, op)
+			// r, cleanup, err := getReader(fSys, op.Path, op.Stdin)
 			if err != nil {
 				outputChan <- WcResult{Err: err}
 				return
@@ -131,21 +132,22 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	return result, nil
 }
 
-func getReader(fSys fs.FS, path string, stdin io.Reader) (io.Reader, func(), error) {
-	if path != "" {
-		err := isValid(fSys, path)
+// func getReader(fSys fs.FS, path string, stdin io.Reader) (io.Reader, func(), error) {
+func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
+	if option.Path != "" {
+		err := isValid(fSys, option.Path)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		file, err := fSys.Open(path)
+		file, err := fSys.Open(option.Path)
 		if err != nil {
 			return nil, nil, err
 		}
 		return file, func() { file.Close() }, nil
 	}
 
-	return stdin, func() {}, nil
+	return option.Stdin, func() {}, nil
 }
 
 func isValid(fSys fs.FS, path string) error {
