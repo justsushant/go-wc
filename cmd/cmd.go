@@ -29,10 +29,15 @@ func run(fSys fs.FS, input *WcInput) bool {
 	}
 
 	option := []wc.WcOption{}
-	for _, arg := range input.files {
-		relPath, _ := getRelPath(fSys, arg)
+	for _, filePath := range input.files {
+		relPath, err := getRelPath(fSys, filePath)
+		if err != nil {
+			// cannot proceed if can't find the path
+			panic("failed to find the path: " + filePath + " " + err.Error())
+		}
+
 		option = append(option, wc.WcOption{
-			OrigPath:  arg,
+			OrigPath:  filePath,
 			Path:      relPath,
 			CountLine: input.lineCount,
 			CountWord: input.wordCount,
