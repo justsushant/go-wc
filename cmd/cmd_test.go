@@ -13,14 +13,16 @@ import (
 
 func TestRun(t *testing.T) {
 	testCases := []struct {
-		name      string
-		path      []string
-		stdin     []byte
-		countLine bool
-		countWord bool
-		countChar bool
-		expResult string
-		expError  error
+		name       string
+		path       []string
+		stdin      []byte
+		countLine  bool
+		countWord  bool
+		countChar  bool
+		excludeExt []string
+		includeExt []string
+		expResult  string
+		expError   error
 	}{
 		{
 			name:     "wc over non-existent-file",
@@ -118,6 +120,24 @@ func TestRun(t *testing.T) {
 			countChar: false,
 			expResult: "       0        2        7 \n",
 		},
+		{
+			name:       "wc files with exclude options",
+			path:       []string{"../testdata/cmd_test/file3.txt", "../testdata/cmd_test/file4.txt", "../testdata/cmd_test/file5.xyz"},
+			countLine:  false,
+			countWord:  false,
+			countChar:  false,
+			excludeExt: []string{"xyz"},
+			expResult:  "       5       10       65 ../testdata/cmd_test/file3.txt\n       7       10       76 ../testdata/cmd_test/file4.txt\n      12       20      141 total\n",
+		},
+		{
+			name:       "wc files with include options",
+			path:       []string{"../testdata/cmd_test/file3.txt", "../testdata/cmd_test/file4.txt", "../testdata/cmd_test/file5.xyz"},
+			countLine:  false,
+			countWord:  false,
+			countChar:  false,
+			includeExt: []string{"txt"},
+			expResult:  "       5       10       65 ../testdata/cmd_test/file3.txt\n       7       10       76 ../testdata/cmd_test/file4.txt\n      12       20      141 total\n",
+		},
 	}
 
 	// creates a file for permission error case, and deletes it in cleanup
@@ -133,13 +153,15 @@ func TestRun(t *testing.T) {
 			in := bytes.NewReader(tc.stdin)
 
 			input := &WcInput{
-				files:     tc.path,
-				lineCount: tc.countLine,
-				wordCount: tc.countWord,
-				charCount: tc.countChar,
-				stdin:     in,
-				stdout:    &got,
-				stderr:    &err,
+				files:      tc.path,
+				lineCount:  tc.countLine,
+				wordCount:  tc.countWord,
+				charCount:  tc.countChar,
+				stdin:      in,
+				stdout:     &got,
+				stderr:     &err,
+				excludeExt: tc.excludeExt,
+				includeExt: tc.includeExt,
 			}
 
 			_ = run(os.DirFS("/"), input)

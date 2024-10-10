@@ -33,16 +33,20 @@ var rootCmd = &cobra.Command{
 		lineCount, _ := cmd.Flags().GetBool("line")
 		wordCount, _ := cmd.Flags().GetBool("word")
 		charCount, _ := cmd.Flags().GetBool("char")
+		includeExt, _ := cmd.Flags().GetStringArray("include-files")
+		excludeExt, _ := cmd.Flags().GetStringArray("exclude-files")
 
 		// centralises all the user input in a single constuct
 		input := &WcInput{
-			files:     args,
-			lineCount: lineCount,
-			wordCount: wordCount,
-			charCount: charCount,
-			stdin:     cmd.InOrStdin(),
-			stdout:    cmd.OutOrStdout(),
-			stderr:    cmd.ErrOrStderr(),
+			files:      args,
+			lineCount:  lineCount,
+			wordCount:  wordCount,
+			charCount:  charCount,
+			stdin:      cmd.InOrStdin(),
+			stdout:     cmd.OutOrStdout(),
+			stderr:     cmd.ErrOrStderr(),
+			includeExt: includeExt,
+			excludeExt: excludeExt,
 		}
 
 		err := run(fs, input)
@@ -79,4 +83,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("line", "l", false, "show line count")
 	rootCmd.PersistentFlags().BoolP("word", "w", false, "show word count")
 	rootCmd.PersistentFlags().BoolP("char", "c", false, "show char count")
+	rootCmd.PersistentFlags().StringArray("include-files", nil, "only include relevant file types")
+	rootCmd.PersistentFlags().StringArray("exclude-files", nil, "exclude all provided file types")
 }

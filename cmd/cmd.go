@@ -11,13 +11,15 @@ import (
 
 // type to represent the user input
 type WcInput struct {
-	files     []string
-	lineCount bool
-	wordCount bool
-	charCount bool
-	stdin     io.Reader
-	stdout    io.Writer
-	stderr    io.Writer
+	files      []string
+	lineCount  bool
+	wordCount  bool
+	charCount  bool
+	stdin      io.Reader
+	stdout     io.Writer
+	stderr     io.Writer
+	includeExt []string
+	excludeExt []string
 }
 
 func run(fSys fs.FS, input *WcInput) bool {
@@ -37,11 +39,13 @@ func run(fSys fs.FS, input *WcInput) bool {
 		}
 
 		option = append(option, wc.WcOption{
-			OrigPath:  filePath,
-			Path:      relPath,
-			CountLine: input.lineCount,
-			CountWord: input.wordCount,
-			CountChar: input.charCount,
+			OrigPath:   filePath,
+			Path:       relPath,
+			CountLine:  input.lineCount,
+			CountWord:  input.wordCount,
+			CountChar:  input.charCount,
+			ExcludeExt: input.excludeExt,
+			IncludeExt: input.includeExt,
 		})
 	}
 	if len(input.files) == 0 {
