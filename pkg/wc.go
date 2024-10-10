@@ -19,13 +19,14 @@ var (
 const MAX_OPEN_FILE_DESCRIPTORS = 1024
 
 type WcOption struct {
-	OrigPath  string
-	Path      string
-	Stdin     io.Reader
-	CountLine bool
-	CountWord bool
-	CountChar bool
-	ExclueExt []string
+	OrigPath   string
+	Path       string
+	Stdin      io.Reader
+	CountLine  bool
+	CountWord  bool
+	CountChar  bool
+	ExcludeExt []string
+	IncludeExt []string
 }
 
 type WcResult struct {
@@ -180,7 +181,6 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	return result, nil
 }
 
-// func getReader(fSys fs.FS, path string, stdin io.Reader) (io.Reader, func(), error) {
 func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
 	if option.Path != "" {
 		ok, err := isValid(fSys, option)
@@ -215,18 +215,28 @@ func isValid(fSys fs.FS, option WcOption) (bool, error) {
 		return false, fmt.Errorf("%s: %w", option.Path, ErrIsDirectory)
 	}
 
-	// check if extension to be exlcuded
-	// slicing to remove the dot (.) from start
-	ext := filepath.Ext(fileInfo.Name())[1:]
-	if slices.Contains(option.ExclueExt, ext) {
-		return false, nil
-	}
-
 	// checks for permissions
 	// looks hacky, might have to change later
 	// possible alternative: fileInfo.Mode().Perm()&(1<<8) == 0
 	if fileInfo.Mode().Perm()&400 == 0 {
 		return false, fmt.Errorf("%s: %w", option.Path, fs.ErrPermission)
+	}
+
+	// check if extension to be exlcuded
+	// slicing to remove the dot (.) from start
+	ext := filepath.Ext(fileInfo.Name())[1:]
+
+	// if extension matches with exclude extension flag, don't count it
+	if slices.Contains(option.ExcludeExt, ext) {
+		return false, nil
+	}
+
+	// if include extension flag was passed, only count the approved extension
+	if option.IncludeExt != nil {
+		if slices.Contains(option.IncludeExt, ext) {
+			return true, nil
+		}
+		return false, nil
 	}
 
 	return true, nil

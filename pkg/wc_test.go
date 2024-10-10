@@ -25,6 +25,7 @@ func TestWc(t *testing.T) {
 		"file9.jpg":  {Data: []byte("dummy file 9"), Mode: 0755},
 		"file10.mov": {Data: []byte("dummy file 10"), Mode: 0755},
 		"file11.png": {Data: []byte("dummy file 11"), Mode: 0755},
+		"file12.md":  {Data: []byte("dummy file 11"), Mode: 0755},
 		"dir1":       {Mode: fs.ModeDir},
 	}
 
@@ -36,6 +37,7 @@ func TestWc(t *testing.T) {
 		countWord  bool
 		countChar  bool
 		excludeExt []string
+		includeExt []string
 		result     []WcResult
 		expErr     error
 	}{
@@ -163,12 +165,12 @@ func TestWc(t *testing.T) {
 			},
 		},
 		// {
-		// 	name: "wc -lwc with multiple matches (random symbols and spaces)",
-		// 	path: []string{"file4.txt"},
+		// 	name:      "wc -lwc with multiple matches (random symbols and spaces)",
+		// 	path:      []string{"file4.txt"},
 		// 	countLine: true,
 		// 	countWord: true,
 		// 	countChar: true,
-		// 	result: []WcResult{{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}},
+		// 	result:    []WcResult{{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}},
 		// },
 		{
 			name:   "wc over non-existent file",
@@ -189,7 +191,7 @@ func TestWc(t *testing.T) {
 			result: []WcResult{{Err: ErrIsDirectory}},
 		},
 		{
-			name:       "wc with exclude ext with only exclude ext",
+			name:       "wc with exclude ext flag with one exclude ext",
 			path:       []string{"file7.tar"},
 			countLine:  true,
 			countWord:  true,
@@ -198,7 +200,7 @@ func TestWc(t *testing.T) {
 			result:     []WcResult{},
 		},
 		{
-			name:       "wc with exclude ext with one valid file and one exclude ext",
+			name:       "wc with exclude ext flag with one valid file and one exclude ext",
 			path:       []string{"file3.txt", "file7.tar"},
 			countLine:  true,
 			countWord:  true,
@@ -207,7 +209,7 @@ func TestWc(t *testing.T) {
 			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
 		},
 		{
-			name:       "wc with exclude ext with two valid file and one exclude ext",
+			name:       "wc with exclude ext flag with two valid file and one exclude ext",
 			path:       []string{"file3.txt", "file7.tar", "file2.txt"},
 			countLine:  true,
 			countWord:  true,
@@ -220,7 +222,7 @@ func TestWc(t *testing.T) {
 			},
 		},
 		{
-			name:       "wc with exclude ext with one valid file and three exclude ext",
+			name:       "wc with exclude ext flag with one valid file and three exclude ext",
 			path:       []string{"file3.txt", "file9.jpg", "file10.mov", "file11.png"},
 			countLine:  true,
 			countWord:  true,
@@ -230,6 +232,48 @@ func TestWc(t *testing.T) {
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 			},
 		},
+		{
+			name:       "wc with include ext flag with one include ext",
+			path:       []string{"file3.txt"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			includeExt: []string{"txt"},
+			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+		},
+		{
+			name:       "wc with include ext flag with one other ext and one include ext",
+			path:       []string{"file3.txt", "file7.tar"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			includeExt: []string{"txt"},
+			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+		},
+		{
+			name:       "wc with include ext flag with two other ext and one include ext",
+			path:       []string{"file3.txt", "file7.tar", "file2.txt"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			includeExt: []string{"tar"},
+			result: []WcResult{
+				{Path: "file7.tar", LineCount: 0, WordCount: 3, CharCount: 12},
+			},
+		},
+		{
+			name:       "wc with exclude ext flag with two valid ext and three other ext",
+			path:       []string{"file3.txt", "file9.jpg", "file10.mov", "file11.png", "file12.md"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			includeExt: []string{"txt", "md"},
+			result: []WcResult{
+				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
+				{Path: "file12.md", LineCount: 0, WordCount: 3, CharCount: 13},
+				{Path: "total", LineCount: 4, WordCount: 10, CharCount: 48},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -237,11 +281,24 @@ func TestWc(t *testing.T) {
 			want := tc.result
 			option := []WcOption{}
 			for _, p := range tc.path {
-				option = append(option, WcOption{OrigPath: p, Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar, ExclueExt: tc.excludeExt})
+				option = append(option, WcOption{
+					OrigPath:   p,
+					Path:       p,
+					CountLine:  tc.countLine,
+					CountWord:  tc.countWord,
+					CountChar:  tc.countChar,
+					ExcludeExt: tc.excludeExt,
+					IncludeExt: tc.includeExt,
+				})
 			}
 
 			if tc.path == nil {
-				option = append(option, WcOption{Stdin: bytes.NewReader(tc.stdin), CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
+				option = append(option, WcOption{
+					Stdin:     bytes.NewReader(tc.stdin),
+					CountLine: tc.countLine,
+					CountWord: tc.countWord,
+					CountChar: tc.countChar,
+				})
 			}
 
 			got := Wc(testFS, option)
@@ -547,8 +604,8 @@ func TestIsValid(t *testing.T) {
 		{
 			name: "exclude file extension",
 			option: WcOption{
-				Path:      "file6.txt",
-				ExclueExt: []string{"txt"},
+				Path:       "file6.txt",
+				ExcludeExt: []string{"txt"},
 			},
 			expOut: false,
 			expErr: nil,
