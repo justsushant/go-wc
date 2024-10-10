@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
+	"slices"
 	"sync"
 	"unicode"
 )
@@ -23,6 +25,7 @@ type WcOption struct {
 	CountLine bool
 	CountWord bool
 	CountChar bool
+	ExclueExt []string
 }
 
 type WcResult struct {
@@ -38,16 +41,16 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 	cond := sync.NewCond(&sync.Mutex{})
 
 	var wg sync.WaitGroup
-	var outputChans = make([]chan WcResult, len(option)) // to aggregate the channels
+	var outputChans = make([]chan *WcResult, len(option)) // to aggregate the channels
 	result := []WcResult{}
 
 	for i, op := range option {
-		outputChan := make(chan WcResult, len(option))
+		outputChan := make(chan *WcResult, len(option))
 		outputChans[i] = outputChan
 
 		// launches a new go routine for each file
 		wg.Add(1)
-		go func(fSys fs.FS, op WcOption, outputChan chan WcResult, cond *sync.Cond) {
+		go func(fSys fs.FS, op WcOption, outputChan chan *WcResult, cond *sync.Cond) {
 			defer wg.Done()
 			defer close(outputChan)
 
@@ -65,44 +68,60 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 
 			// getting the reader and making checks
 			r, cleanup, err := getReader(fSys, op)
-			// r, cleanup, err := getReader(fSys, op.Path, op.Stdin)
+
+			defer func() {
+				// to free file resources
+				cleanup()
+
+				// increment the openFileLimit since we're closing the file
+				// lock the mutex before incrementing the openFileLimit
+				// signal other gouroutine to start
+				// unlock after incrementing the openFileLimit
+				cond.L.Lock()
+				openFileLimit++
+				// maybe we can broadcast here, since in an extreme edge case,
+				// all gouroutines could hang on waiting indefinetly because upon signal, those goroutines still didnt fulfilled the condition
+				cond.Signal()
+				cond.L.Unlock()
+			}()
+
 			if err != nil {
-				outputChan <- WcResult{Err: err}
+				outputChan <- &WcResult{Err: err}
+				return
+			}
+
+			// if reader is nil, then return
+			// means there was no error, but no reader either
+			// for eg, in case of exclude extension
+			if r == nil {
 				return
 			}
 
 			// counting operation
 			result, err := count(r, op)
 			if err != nil {
-				outputChan <- WcResult{Err: err}
+				outputChan <- &WcResult{Err: err}
 				return
 			}
-			outputChan <- result
-
-			cleanup()
-
-			// increment the openFileLimit since we're closing the file
-			// lock the mutex before incrementing the openFileLimit
-			// signal other gouroutine to start
-			// unlock after incrementing the openFileLimit
-			cond.L.Lock()
-			openFileLimit++
-			// maybe we can broadcast here, since in an extreme edge case,
-			// all gouroutines could hang on waiting indefinetly because upon signal, those goroutines still didnt fulfilled the condition
-			cond.Signal()
-			cond.L.Unlock()
+			outputChan <- &result
 		}(fSys, op, outputChan, cond)
 	}
 	wg.Wait()
 
 	// collates data from all the channels
 	for _, outputChan := range outputChans {
-		result = append(result, <-outputChan)
+		output := <-outputChan
+
+		if output == nil {
+			continue
+		}
+		result = append(result, *output)
 	}
 
 	// adds the total if more than one file
 	if len(result) > 1 {
-		result = append(result, calcTotal(result))
+		total := calcTotal(result)
+		result = append(result, total)
 	}
 
 	return result
@@ -164,9 +183,12 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 // func getReader(fSys fs.FS, path string, stdin io.Reader) (io.Reader, func(), error) {
 func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
 	if option.Path != "" {
-		err := isValid(fSys, option.Path)
+		ok, err := isValid(fSys, option)
 		if err != nil {
-			return nil, nil, err
+			return nil, func() {}, err
+		}
+		if !ok {
+			return nil, func() {}, nil
 		}
 
 		file, err := fSys.Open(option.Path)
@@ -179,32 +201,39 @@ func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
 	return option.Stdin, func() {}, nil
 }
 
-func isValid(fSys fs.FS, path string) error {
-	fileInfo, err := fs.Stat(fSys, path)
+func isValid(fSys fs.FS, option WcOption) (bool, error) {
+	fileInfo, err := fs.Stat(fSys, option.Path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("%s: %w", path, fs.ErrNotExist)
+			return false, fmt.Errorf("%s: %w", option.Path, fs.ErrNotExist)
 		}
-		return fmt.Errorf("%s: %w", path, err)
+		return false, fmt.Errorf("%s: %w", option.Path, err)
 	}
 
 	// checks for directory
 	if fileInfo.IsDir() {
-		return fmt.Errorf("%s: %w", path, ErrIsDirectory)
+		return false, fmt.Errorf("%s: %w", option.Path, ErrIsDirectory)
+	}
+
+	// check if extension to be exlcuded
+	// slicing to remove the dot (.) from start
+	ext := filepath.Ext(fileInfo.Name())[1:]
+	if slices.Contains(option.ExclueExt, ext) {
+		return false, nil
 	}
 
 	// checks for permissions
 	// looks hacky, might have to change later
 	// possible alternative: fileInfo.Mode().Perm()&(1<<8) == 0
 	if fileInfo.Mode().Perm()&400 == 0 {
-		return fmt.Errorf("%s: %w", path, fs.ErrPermission)
+		return false, fmt.Errorf("%s: %w", option.Path, fs.ErrPermission)
 	}
 
-	return nil
+	return true, nil
 }
 
 func calcTotal(result []WcResult) WcResult {
-	total := WcResult{Path: "total"}
+	total := &WcResult{Path: "total"}
 
 	for _, res := range result {
 		total.LineCount += res.LineCount
@@ -212,5 +241,5 @@ func calcTotal(result []WcResult) WcResult {
 		total.CharCount += res.CharCount
 	}
 
-	return total
+	return *total
 }

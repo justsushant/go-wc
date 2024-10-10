@@ -3,6 +3,7 @@ package wc
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"reflect"
@@ -13,23 +14,30 @@ import (
 
 func TestWc(t *testing.T) {
 	testFS := fstest.MapFS{
-		"file1.txt": {Data: []byte(""), Mode: 0755},
-		"file2.txt": {Data: []byte("single_line"), Mode: 0755},
-		"file3.txt": {Data: []byte("single line\nand\ndouble line\nin\nfile"), Mode: 0755},
-		"file4.txt": {Data: []byte("\nI love mangoes,\tapples- but it applies to most fruits.\n??--ww"), Mode: 0755},
-		"file5.txt": {Data: []byte("this file got permisson error"), Mode: 0000},
-		"dir1":      {Mode: fs.ModeDir},
+		"file1.txt":  {Data: []byte(""), Mode: 0755},
+		"file2.txt":  {Data: []byte("single_line"), Mode: 0755},
+		"file3.txt":  {Data: []byte("single line\nand\ndouble line\nin\nfile"), Mode: 0755},
+		"file4.txt":  {Data: []byte("\nI love mangoes,\tapples- but it applies to most fruits.\n??--ww"), Mode: 0755},
+		"file5.txt":  {Data: []byte("this file got permisson error"), Mode: 0000},
+		"file6.txt":  {Data: []byte("dummy file 6"), Mode: 0755},
+		"file7.tar":  {Data: []byte("dummy file 7"), Mode: 0755},
+		"file8.txt":  {Data: []byte(""), Mode: 0755},
+		"file9.jpg":  {Data: []byte("dummy file 9"), Mode: 0755},
+		"file10.mov": {Data: []byte("dummy file 10"), Mode: 0755},
+		"file11.png": {Data: []byte("dummy file 11"), Mode: 0755},
+		"dir1":       {Mode: fs.ModeDir},
 	}
 
 	testCases := []struct {
-		name      string
-		path      []string
-		stdin     []byte
-		countLine bool
-		countWord bool
-		countChar bool
-		result    []WcResult
-		expErr    error
+		name       string
+		path       []string
+		stdin      []byte
+		countLine  bool
+		countWord  bool
+		countChar  bool
+		excludeExt []string
+		result     []WcResult
+		expErr     error
 	}{
 		{
 			name:      "wc -l with no matches",
@@ -134,6 +142,26 @@ func TestWc(t *testing.T) {
 			countChar: true,
 			result:    []WcResult{{LineCount: 3, WordCount: 4, CharCount: 14}},
 		},
+		{
+			name:      "wc with empty file",
+			path:      []string{"file8.txt"},
+			countLine: true,
+			countWord: true,
+			countChar: true,
+			result:    []WcResult{{Path: "file8.txt", LineCount: 0, WordCount: 0, CharCount: 0}},
+		},
+		{
+			name:      "wc with one empty file and one valid file with text",
+			path:      []string{"file3.txt", "file8.txt"},
+			countLine: true,
+			countWord: true,
+			countChar: true,
+			result: []WcResult{
+				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
+				{Path: "file8.txt", LineCount: 0, WordCount: 0, CharCount: 0},
+				{Path: "total", LineCount: 4, WordCount: 7, CharCount: 35},
+			},
+		},
 		// {
 		// 	name: "wc -lwc with multiple matches (random symbols and spaces)",
 		// 	path: []string{"file4.txt"},
@@ -160,6 +188,48 @@ func TestWc(t *testing.T) {
 			expErr: ErrIsDirectory,
 			result: []WcResult{{Err: ErrIsDirectory}},
 		},
+		{
+			name:       "wc with exclude ext with only exclude ext",
+			path:       []string{"file7.tar"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			excludeExt: []string{"tar"},
+			result:     []WcResult{},
+		},
+		{
+			name:       "wc with exclude ext with one valid file and one exclude ext",
+			path:       []string{"file3.txt", "file7.tar"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			excludeExt: []string{"tar"},
+			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+		},
+		{
+			name:       "wc with exclude ext with two valid file and one exclude ext",
+			path:       []string{"file3.txt", "file7.tar", "file2.txt"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			excludeExt: []string{"tar"},
+			result: []WcResult{
+				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
+				{Path: "file2.txt", LineCount: 0, WordCount: 1, CharCount: 11},
+				{Path: "total", LineCount: 4, WordCount: 8, CharCount: 46},
+			},
+		},
+		{
+			name:       "wc with exclude ext with one valid file and three exclude ext",
+			path:       []string{"file3.txt", "file9.jpg", "file10.mov", "file11.png"},
+			countLine:  true,
+			countWord:  true,
+			countChar:  true,
+			excludeExt: []string{"jpg", "mov", "png"},
+			result: []WcResult{
+				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -167,7 +237,7 @@ func TestWc(t *testing.T) {
 			want := tc.result
 			option := []WcOption{}
 			for _, p := range tc.path {
-				option = append(option, WcOption{OrigPath: p, Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar})
+				option = append(option, WcOption{OrigPath: p, Path: p, CountLine: tc.countLine, CountWord: tc.countWord, CountChar: tc.countChar, ExclueExt: tc.excludeExt})
 			}
 
 			if tc.path == nil {
@@ -175,6 +245,7 @@ func TestWc(t *testing.T) {
 			}
 
 			got := Wc(testFS, option)
+			fmt.Println(got)
 
 			// iterating over the WcResult slice
 			// we're using boolean flags to figure out if any errors were present in any of the result
@@ -422,59 +493,90 @@ func TestIsValid(t *testing.T) {
 		"file3.txt": {Data: []byte("single line\nand\ndouble line\nin\nfile"), Mode: 0755},
 		"file4.txt": {Data: []byte("\nI love mangoes,\tapples- but it applies to most fruits.\n??--ww"), Mode: 0755},
 		"file5.txt": {Data: []byte("this file got permisson error"), Mode: 0000},
+		"file6.txt": {Data: []byte("dummy file 6"), Mode: 0755},
 		"dir1":      {Mode: fs.ModeDir},
 	}
 
 	tt := []struct {
 		name            string
-		path            string
+		option          WcOption
+		expOut          bool
 		expTextInReader string
 		expErr          error
 	}{
 		{
 			name:   "nomal happy case with valid path",
-			path:   "file2.txt",
+			expOut: true,
+			option: WcOption{
+				Path: "file2.txt",
+			},
 			expErr: nil,
 		},
 		{
 			name:   "error unhappy case with empty path",
-			path:   "",
+			expOut: false,
+			option: WcOption{
+				Path: "",
+			},
 			expErr: fs.ErrNotExist,
 		},
 		{
-			name:   "error unhappy case with invalid path of file",
-			path:   "xyz.txt",
+			name: "error unhappy case with invalid path of file",
+			option: WcOption{
+				Path: "xyz.txt",
+			},
+			expOut: false,
 			expErr: fs.ErrNotExist,
 		},
 		{
-			name:   "error unhappy case with valid path of directory",
-			path:   "dir1",
+			name: "error unhappy case with valid path of directory",
+			option: WcOption{
+				Path: "dir1",
+			},
+			expOut: false,
 			expErr: ErrIsDirectory,
 		},
 		{
-			name:   "error unhappy case with valid path of file but permisson error",
-			path:   "file5.txt",
+			name: "error unhappy case with valid path of file but permisson error",
+			option: WcOption{
+				Path: "file5.txt",
+			},
+			expOut: false,
 			expErr: fs.ErrPermission,
+		},
+		{
+			name: "exclude file extension",
+			option: WcOption{
+				Path:      "file6.txt",
+				ExclueExt: []string{"txt"},
+			},
+			expOut: false,
+			expErr: nil,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			err := isValid(testFS, tc.path)
+			gotOk, gotErr := isValid(testFS, tc.option)
+
+			if gotOk != tc.expOut {
+				t.Errorf("Expected %v but got %v", tc.expOut, gotErr)
+			}
+
 			if tc.expErr != nil {
-				if err == nil {
+				if gotErr == nil {
 					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
 				}
 
-				if !errors.Is(err, tc.expErr) {
-					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), err.Error())
+				if !errors.Is(gotErr, tc.expErr) {
+					t.Fatalf("Expected error %q but got %q", tc.expErr.Error(), gotErr.Error())
 				}
 
 				return
 			}
 
-			if err != nil {
-				t.Fatalf("Unexpected error: %q", err.Error())
+			if gotErr != nil {
+				t.Fatalf("Unexpected error: %q", gotErr.Error())
 			}
 		})
 	}
