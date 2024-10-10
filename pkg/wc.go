@@ -35,8 +35,7 @@ type WcResult struct {
 
 func Wc(fSys fs.FS, option []WcOption) []WcResult {
 	var openFileLimit int = MAX_OPEN_FILE_DESCRIPTORS
-	var mu sync.Mutex
-	cond := sync.NewCond(&mu)
+	cond := sync.NewCond(&sync.Mutex{})
 
 	var wg sync.WaitGroup
 	var outputChans = make([]chan WcResult, len(option)) // to aggregate the channels
@@ -89,7 +88,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 			cond.L.Lock()
 			openFileLimit++
 			// maybe we can broadcast here, since in an extreme edge case,
-			// all gouroutines could hang on waiting indefinetly because upon signal method they still didnt fulfilled the condition
+			// all gouroutines could hang on waiting indefinetly because upon signal, those goroutines still didnt fulfilled the condition
 			cond.Signal()
 			cond.L.Unlock()
 		}(fSys, op, outputChan, cond)
