@@ -14,6 +14,8 @@ var (
 	ErrIsDirectory = errors.New("is a directory")
 )
 
+const MAX_OPEN_FILE_DESCRIPTORS = 1024
+
 type WcOption struct {
 	OrigPath  string
 	Path      string
@@ -32,6 +34,10 @@ type WcResult struct {
 }
 
 func Wc(fSys fs.FS, option []WcOption) []WcResult {
+	var openFileLimit int = MAX_OPEN_FILE_DESCRIPTORS
+	var mu sync.Mutex
+	cond := sync.NewCond(&mu)
+
 	var wg sync.WaitGroup
 	var outputChans = make([]chan WcResult, len(option)) // to aggregate the channels
 	result := []WcResult{}
@@ -42,9 +48,21 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 
 		// launches a new go routine for each file
 		wg.Add(1)
-		go func(fSys fs.FS, op WcOption, outputChan chan WcResult) {
+		go func(fSys fs.FS, op WcOption, outputChan chan WcResult, cond *sync.Cond) {
 			defer wg.Done()
 			defer close(outputChan)
+
+			// decrement the openFileLimit since we're opening the file
+			// lock the mutex before decrementing the openFileLimit
+			// check if openFileLimit > 0; if its not, means we're at the limit
+			// go routine will wait till the limit is resolved
+			// unlock after decrementing the openFileLimit
+			cond.L.Lock()
+			for openFileLimit <= 0 {
+				cond.Wait()
+			}
+			openFileLimit--
+			cond.L.Unlock()
 
 			// getting the reader and making checks
 			r, cleanup, err := getReader(fSys, op)
@@ -53,7 +71,6 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 				outputChan <- WcResult{Err: err}
 				return
 			}
-			defer cleanup()
 
 			// counting operation
 			result, err := count(r, op)
@@ -62,7 +79,20 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 				return
 			}
 			outputChan <- result
-		}(fSys, op, outputChan)
+
+			cleanup()
+
+			// increment the openFileLimit since we're closing the file
+			// lock the mutex before incrementing the openFileLimit
+			// signal other gouroutine to start
+			// unlock after incrementing the openFileLimit
+			cond.L.Lock()
+			openFileLimit++
+			// maybe we can broadcast here, since in an extreme edge case,
+			// all gouroutines could hang on waiting indefinetly because upon signal method they still didnt fulfilled the condition
+			cond.Signal()
+			cond.L.Unlock()
+		}(fSys, op, outputChan, cond)
 	}
 	wg.Wait()
 
