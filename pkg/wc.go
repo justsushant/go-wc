@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"unicode"
 )
@@ -222,21 +223,23 @@ func isValid(fSys fs.FS, option WcOption) (bool, error) {
 		return false, fmt.Errorf("%s: %w", option.Path, fs.ErrPermission)
 	}
 
-	// check if extension to be exlcuded
-	// slicing to remove the dot (.) from start
-	ext := filepath.Ext(fileInfo.Name())[1:]
+	// check if extension to be exlcuded or included
+	if len(option.IncludeExt) > 0 || len(option.ExcludeExt) > 0 {
+		// getting the file extension and removing the dot
+		ext := strings.TrimPrefix(filepath.Ext(fileInfo.Name()), ".")
 
-	// if extension matches with exclude extension flag, don't count it
-	if slices.Contains(option.ExcludeExt, ext) {
-		return false, nil
-	}
-
-	// if include extension flag was passed, only count the approved extension
-	if option.IncludeExt != nil {
-		if slices.Contains(option.IncludeExt, ext) {
-			return true, nil
+		// if extension matches with exclude extension flag, don't count it
+		if slices.Contains(option.ExcludeExt, ext) {
+			return false, nil
 		}
-		return false, nil
+
+		// if include extension flag was passed, only count the approved extension
+		if option.IncludeExt != nil {
+			if slices.Contains(option.IncludeExt, ext) {
+				return true, nil
+			}
+			return false, nil
+		}
 	}
 
 	return true, nil

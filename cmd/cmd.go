@@ -90,7 +90,6 @@ func printResult(result []wc.WcResult, input *WcInput) bool {
 func getRelPath(fSys fs.FS, path string) (relPath string, err error) {
 	absPath, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
-		fmt.Println(err)
 		return "", err
 	}
 

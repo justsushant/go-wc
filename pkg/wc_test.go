@@ -3,7 +3,6 @@ package wc
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"reflect"
@@ -302,7 +301,6 @@ func TestWc(t *testing.T) {
 			}
 
 			got := Wc(testFS, option)
-			fmt.Println(got)
 
 			// iterating over the WcResult slice
 			// we're using boolean flags to figure out if any errors were present in any of the result
