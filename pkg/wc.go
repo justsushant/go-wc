@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"unicode"
 )
@@ -14,13 +17,17 @@ var (
 	ErrIsDirectory = errors.New("is a directory")
 )
 
+const MAX_OPEN_FILE_DESCRIPTORS = 1024
+
 type WcOption struct {
-	OrigPath  string
-	Path      string
-	Stdin     io.Reader
-	CountLine bool
-	CountWord bool
-	CountChar bool
+	OrigPath   string
+	Path       string
+	Stdin      io.Reader
+	CountLine  bool
+	CountWord  bool
+	CountChar  bool
+	ExcludeExt []string
+	IncludeExt []string
 }
 
 type WcResult struct {
@@ -32,47 +39,91 @@ type WcResult struct {
 }
 
 func Wc(fSys fs.FS, option []WcOption) []WcResult {
+	var openFileLimit int = MAX_OPEN_FILE_DESCRIPTORS
+	cond := sync.NewCond(&sync.Mutex{})
+
 	var wg sync.WaitGroup
-	var outputChans = make([]chan WcResult, len(option)) // to aggregate the channels
+	var outputChans = make([]chan *WcResult, len(option)) // to aggregate the channels
 	result := []WcResult{}
 
 	for i, op := range option {
-		outputChan := make(chan WcResult, len(option))
+		outputChan := make(chan *WcResult, len(option))
 		outputChans[i] = outputChan
 
 		// launches a new go routine for each file
 		wg.Add(1)
-		go func(fSys fs.FS, op WcOption, outputChan chan WcResult) {
+		go func(fSys fs.FS, op WcOption, outputChan chan *WcResult, cond *sync.Cond) {
 			defer wg.Done()
 			defer close(outputChan)
 
+			// decrement the openFileLimit since we're opening the file
+			// lock the mutex before decrementing the openFileLimit
+			// check if openFileLimit > 0; if its not, means we're at the limit
+			// go routine will wait till the limit is resolved
+			// unlock after decrementing the openFileLimit
+			cond.L.Lock()
+			for openFileLimit <= 0 {
+				cond.Wait()
+			}
+			openFileLimit--
+			cond.L.Unlock()
+
 			// getting the reader and making checks
-			r, cleanup, err := getReader(fSys, op.Path, op.Stdin)
+			r, cleanup, err := getReader(fSys, op)
+
+			defer func() {
+				// to free file resources
+				cleanup()
+
+				// increment the openFileLimit since we're closing the file
+				// lock the mutex before incrementing the openFileLimit
+				// signal other gouroutine to start
+				// unlock after incrementing the openFileLimit
+				cond.L.Lock()
+				openFileLimit++
+				// maybe we can broadcast here, since in an extreme edge case,
+				// all gouroutines could hang on waiting indefinetly because upon signal, those goroutines still didnt fulfilled the condition
+				cond.Signal()
+				cond.L.Unlock()
+			}()
+
 			if err != nil {
-				outputChan <- WcResult{Err: err}
+				outputChan <- &WcResult{Err: err}
 				return
 			}
-			defer cleanup()
+
+			// if reader is nil, then return
+			// means there was no error, but no reader either
+			// for eg, in case of exclude extension
+			if r == nil {
+				return
+			}
 
 			// counting operation
 			result, err := count(r, op)
 			if err != nil {
-				outputChan <- WcResult{Err: err}
+				outputChan <- &WcResult{Err: err}
 				return
 			}
-			outputChan <- result
-		}(fSys, op, outputChan)
+			outputChan <- &result
+		}(fSys, op, outputChan, cond)
 	}
 	wg.Wait()
 
 	// collates data from all the channels
 	for _, outputChan := range outputChans {
-		result = append(result, <-outputChan)
+		output := <-outputChan
+
+		if output == nil {
+			continue
+		}
+		result = append(result, *output)
 	}
 
 	// adds the total if more than one file
 	if len(result) > 1 {
-		result = append(result, calcTotal(result))
+		total := calcTotal(result)
+		result = append(result, total)
 	}
 
 	return result
@@ -131,49 +182,71 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	return result, nil
 }
 
-func getReader(fSys fs.FS, path string, stdin io.Reader) (io.Reader, func(), error) {
-	if path != "" {
-		err := isValid(fSys, path)
+func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
+	if option.Path != "" {
+		ok, err := isValid(fSys, option)
 		if err != nil {
-			return nil, nil, err
+			return nil, func() {}, err
+		}
+		if !ok {
+			return nil, func() {}, nil
 		}
 
-		file, err := fSys.Open(path)
+		file, err := fSys.Open(option.Path)
 		if err != nil {
 			return nil, nil, err
 		}
 		return file, func() { file.Close() }, nil
 	}
 
-	return stdin, func() {}, nil
+	return option.Stdin, func() {}, nil
 }
 
-func isValid(fSys fs.FS, path string) error {
-	fileInfo, err := fs.Stat(fSys, path)
+func isValid(fSys fs.FS, option WcOption) (bool, error) {
+	fileInfo, err := fs.Stat(fSys, option.Path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("%s: %w", path, fs.ErrNotExist)
+			return false, fmt.Errorf("%s: %w", option.Path, fs.ErrNotExist)
 		}
-		return fmt.Errorf("%s: %w", path, err)
+		return false, fmt.Errorf("%s: %w", option.Path, err)
 	}
 
 	// checks for directory
 	if fileInfo.IsDir() {
-		return fmt.Errorf("%s: %w", path, ErrIsDirectory)
+		return false, fmt.Errorf("%s: %w", option.Path, ErrIsDirectory)
 	}
 
 	// checks for permissions
 	// looks hacky, might have to change later
 	// possible alternative: fileInfo.Mode().Perm()&(1<<8) == 0
 	if fileInfo.Mode().Perm()&400 == 0 {
-		return fmt.Errorf("%s: %w", path, fs.ErrPermission)
+		return false, fmt.Errorf("%s: %w", option.Path, fs.ErrPermission)
 	}
 
-	return nil
+	// check if extension to be exlcuded or included
+	if len(option.IncludeExt) > 0 || len(option.ExcludeExt) > 0 {
+		// getting the file extension and removing the dot
+		ext := strings.TrimPrefix(filepath.Ext(fileInfo.Name()), ".")
+
+		// if extension matches with exclude extension flag, don't count it
+		if slices.Contains(option.ExcludeExt, ext) {
+			return false, nil
+		}
+
+		// if include extension flag was passed, only count the approved extension
+		if option.IncludeExt != nil {
+			if slices.Contains(option.IncludeExt, ext) {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func calcTotal(result []WcResult) WcResult {
-	total := WcResult{Path: "total"}
+	total := &WcResult{Path: "total"}
 
 	for _, res := range result {
 		total.LineCount += res.LineCount
@@ -181,5 +254,5 @@ func calcTotal(result []WcResult) WcResult {
 		total.CharCount += res.CharCount
 	}
 
-	return total
+	return *total
 }

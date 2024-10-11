@@ -9,74 +9,91 @@ import (
 	wc "github.com/one2n-go-bootcamp/go-wc/pkg"
 )
 
-func run(fSys fs.FS, args []string, lineCount, wordCount, charCount bool, stdin io.Reader, stdout, stderr io.Writer) bool {
+// type to represent the user input
+type WcInput struct {
+	files      []string
+	lineCount  bool
+	wordCount  bool
+	charCount  bool
+	stdin      io.Reader
+	stdout     io.Writer
+	stderr     io.Writer
+	includeExt []string
+	excludeExt []string
+}
+
+func run(fSys fs.FS, input *WcInput) bool {
 	// if no options provided
-	if !lineCount && !wordCount && !charCount {
-		lineCount = true
-		wordCount = true
-		charCount = true
+	if !input.lineCount && !input.wordCount && !input.charCount {
+		input.lineCount = true
+		input.wordCount = true
+		input.charCount = true
 	}
 
 	option := []wc.WcOption{}
-	for _, arg := range args {
-		relPath, _ := getRelPath(fSys, arg)
+	for _, filePath := range input.files {
+		relPath, err := getRelPath(fSys, filePath)
+		if err != nil {
+			// cannot proceed if can't find the path
+			panic("failed to find the path: " + filePath + " " + err.Error())
+		}
+
 		option = append(option, wc.WcOption{
-			OrigPath:  arg,
-			Path:      relPath,
-			CountLine: lineCount,
-			CountWord: wordCount,
-			CountChar: charCount,
+			OrigPath:   filePath,
+			Path:       relPath,
+			CountLine:  input.lineCount,
+			CountWord:  input.wordCount,
+			CountChar:  input.charCount,
+			ExcludeExt: input.excludeExt,
+			IncludeExt: input.includeExt,
 		})
 	}
-	if len(args) == 0 {
+	if len(input.files) == 0 {
 		option = append(option, wc.WcOption{
-			Stdin:     stdin,
-			CountLine: lineCount,
-			CountWord: wordCount,
-			CountChar: charCount,
+			Stdin:     input.stdin,
+			CountLine: input.lineCount,
+			CountWord: input.wordCount,
+			CountChar: input.charCount,
 		})
 	}
 
 	result := wc.Wc(fSys, option)
 
-	return printResult(result, lineCount, wordCount, charCount, stdout, stderr)
+	return printResult(result, input)
 }
 
-func printResult(result []wc.WcResult, lineCount, wordCount, charCount bool, stdout, stderr io.Writer) bool {
+func printResult(result []wc.WcResult, input *WcInput) bool {
 	errFoundFlag := false
 	for _, res := range result {
 		if res.Err != nil {
 			errFoundFlag = true
-			fmt.Fprintln(stderr, res.Err.Error())
+			fmt.Fprintln(input.stderr, res.Err.Error())
 			continue
 		}
 
 		var output string
-		if lineCount {
+		if input.lineCount {
 			output += fmt.Sprintf("%8d ", res.LineCount)
 		}
-		if wordCount {
+		if input.wordCount {
 			output += fmt.Sprintf("%8d ", res.WordCount)
 		}
-		if charCount {
+		if input.charCount {
 			output += fmt.Sprintf("%8d ", res.CharCount)
 		}
 		output += res.Path
-		fmt.Fprintln(stdout, output)
+		fmt.Fprintln(input.stdout, output)
 	}
 	return errFoundFlag
 }
 
-func getRelPath(fSys fs.FS, arg string) (relPath string, err error) {
-	absPath, err := filepath.Abs(filepath.Clean(arg))
+func getRelPath(fSys fs.FS, path string) (relPath string, err error) {
+	absPath, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
-		fmt.Println(err)
 		return "", err
 	}
 
 	root := fmt.Sprintf("%s", fSys)
-	// fmt.Println("Root: ", root)
-	// fmt.Println("Abs Path: ", absPath)
 	relPath, err = filepath.Rel(root, absPath)
 	if err != nil {
 		return "", err
