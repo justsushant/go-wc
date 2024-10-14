@@ -614,10 +614,6 @@ func TestIsValid(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			gotOk, gotErr := isValid(testFS, tc.option)
 
-			if gotOk != tc.expOut {
-				t.Errorf("Expected %v but got %v", tc.expOut, gotErr)
-			}
-
 			if tc.expErr != nil {
 				if gotErr == nil {
 					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
@@ -633,6 +629,11 @@ func TestIsValid(t *testing.T) {
 			if gotErr != nil {
 				t.Fatalf("Unexpected error: %q", gotErr.Error())
 			}
+
+			if gotOk != tc.expOut {
+				t.Errorf("Expected %v but got %v", tc.expOut, gotErr)
+			}
+
 		})
 	}
 }

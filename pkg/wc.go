@@ -129,6 +129,26 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 	return result
 }
 
+func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
+	if option.Path != "" {
+		ok, err := isValid(fSys, option)
+		if err != nil {
+			return nil, func() {}, err
+		}
+		if !ok {
+			return nil, func() {}, nil
+		}
+
+		file, err := fSys.Open(option.Path)
+		if err != nil {
+			return nil, nil, err
+		}
+		return file, func() { file.Close() }, nil
+	}
+
+	return option.Stdin, func() {}, nil
+}
+
 func count(r io.Reader, option WcOption) (WcResult, error) {
 	var lineCount, wordCount, charCount int
 	spaceFlag := true // to keep track of previous whitespace
@@ -180,26 +200,6 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	}
 
 	return result, nil
-}
-
-func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
-	if option.Path != "" {
-		ok, err := isValid(fSys, option)
-		if err != nil {
-			return nil, func() {}, err
-		}
-		if !ok {
-			return nil, func() {}, nil
-		}
-
-		file, err := fSys.Open(option.Path)
-		if err != nil {
-			return nil, nil, err
-		}
-		return file, func() { file.Close() }, nil
-	}
-
-	return option.Stdin, func() {}, nil
 }
 
 func isValid(fSys fs.FS, option WcOption) (bool, error) {

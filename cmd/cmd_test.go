@@ -342,7 +342,7 @@ func TestPrintResult(t *testing.T) {
 }
 
 // TODO: try to get a case where an error is thrown
-func TestGetRelPath(t *testing.T) {
+func TestGetFullPath(t *testing.T) {
 	tt := []struct {
 		name   string
 		fSys   fs.FS
@@ -371,7 +371,7 @@ func TestGetRelPath(t *testing.T) {
 				t.Fatalf("Unexpected error while getting current working directory: %v", err)
 			}
 
-			gotPath, gotErr := getRelPath(os.DirFS(wd), tc.path)
+			gotPath, gotErr := getFullPath(os.DirFS(wd), tc.path)
 			if tc.expErr != nil {
 				if gotErr == nil {
 					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())

@@ -32,7 +32,7 @@ func run(fSys fs.FS, input *WcInput) bool {
 
 	option := []wc.WcOption{}
 	for _, filePath := range input.files {
-		relPath, err := getRelPath(fSys, filePath)
+		relPath, err := getFullPath(fSys, filePath)
 		if err != nil {
 			// cannot proceed if can't find the path
 			panic("failed to find the path: " + filePath + " " + err.Error())
@@ -87,7 +87,7 @@ func printResult(result []wc.WcResult, input *WcInput) bool {
 	return errFoundFlag
 }
 
-func getRelPath(fSys fs.FS, path string) (relPath string, err error) {
+func getFullPath(fSys fs.FS, path string) (relPath string, err error) {
 	absPath, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
 		return "", err
