@@ -38,13 +38,13 @@ type WcResult struct {
 	Err       error
 }
 
-func Wc(fSys fs.FS, option []WcOption) []WcResult {
+func Wc(fSys fs.FS, option []*WcOption) []*WcResult {
 	var openFileLimit int = MAX_OPEN_FILE_DESCRIPTORS
 	cond := sync.NewCond(&sync.Mutex{})
 
 	var wg sync.WaitGroup
 	var outputChans = make([]chan *WcResult, len(option)) // to aggregate the channels
-	result := []WcResult{}
+	result := []*WcResult{}
 
 	for i, op := range option {
 		outputChan := make(chan *WcResult, len(option))
@@ -52,7 +52,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 
 		// launches a new go routine for each file
 		wg.Add(1)
-		go func(fSys fs.FS, op WcOption, outputChan chan *WcResult, cond *sync.Cond) {
+		go func(fSys fs.FS, op *WcOption, outputChan chan *WcResult, cond *sync.Cond) {
 			defer wg.Done()
 			defer close(outputChan)
 
@@ -105,7 +105,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 				outputChan <- &WcResult{Err: err}
 				return
 			}
-			outputChan <- &result
+			outputChan <- result
 		}(fSys, op, outputChan, cond)
 	}
 	wg.Wait()
@@ -117,7 +117,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 		if output == nil {
 			continue
 		}
-		result = append(result, *output)
+		result = append(result, output)
 	}
 
 	// adds the total if more than one file
@@ -129,7 +129,7 @@ func Wc(fSys fs.FS, option []WcOption) []WcResult {
 	return result
 }
 
-func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
+func getReader(fSys fs.FS, option *WcOption) (io.Reader, func(), error) {
 	if option.Path != "" {
 		ok, err := isValid(fSys, option)
 		if err != nil {
@@ -149,11 +149,11 @@ func getReader(fSys fs.FS, option WcOption) (io.Reader, func(), error) {
 	return option.Stdin, func() {}, nil
 }
 
-func count(r io.Reader, option WcOption) (WcResult, error) {
+func count(r io.Reader, option *WcOption) (*WcResult, error) {
 	var lineCount, wordCount, charCount int
 	spaceFlag := true // to keep track of previous whitespace
 
-	var result WcResult
+	result := &WcResult{}
 	result.Path = option.OrigPath
 
 	scanner := bufio.NewScanner(r)
@@ -186,7 +186,7 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return WcResult{}, err
+		return &WcResult{}, err
 	}
 
 	if option.CountLine {
@@ -200,9 +200,10 @@ func count(r io.Reader, option WcOption) (WcResult, error) {
 	}
 
 	return result, nil
+	// return &result, nil
 }
 
-func isValid(fSys fs.FS, option WcOption) (bool, error) {
+func isValid(fSys fs.FS, option *WcOption) (bool, error) {
 	fileInfo, err := fs.Stat(fSys, option.Path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -245,7 +246,7 @@ func isValid(fSys fs.FS, option WcOption) (bool, error) {
 	return true, nil
 }
 
-func calcTotal(result []WcResult) WcResult {
+func calcTotal(result []*WcResult) *WcResult {
 	total := &WcResult{Path: "total"}
 
 	for _, res := range result {
@@ -254,5 +255,5 @@ func calcTotal(result []WcResult) WcResult {
 		total.CharCount += res.CharCount
 	}
 
-	return *total
+	return total
 }

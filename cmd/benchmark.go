@@ -7,7 +7,6 @@ import (
 
 func BenchmarkRun(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		// wd, _ := os.Getwd()
 		fSys := os.DirFS("/")
 
 		input := &WcInput{

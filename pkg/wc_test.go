@@ -37,83 +37,83 @@ func TestWc(t *testing.T) {
 		countChar  bool
 		excludeExt []string
 		includeExt []string
-		result     []WcResult
+		result     []*WcResult
 		expErr     error
 	}{
 		{
 			name:      "wc -l with no matches",
 			path:      []string{"file1.txt"},
 			countLine: true,
-			result:    []WcResult{{Path: "file1.txt", LineCount: 0}},
+			result:    []*WcResult{{Path: "file1.txt", LineCount: 0}},
 		},
 		{
 			name:      "wc -l with single match",
 			path:      []string{"file2.txt"},
 			countLine: true,
-			result:    []WcResult{{Path: "file2.txt", LineCount: 0}},
+			result:    []*WcResult{{Path: "file2.txt", LineCount: 0}},
 		},
 		{
 			name:      "wc -l with multiple matches",
 			path:      []string{"file3.txt"},
 			countLine: true,
-			result:    []WcResult{{Path: "file3.txt", LineCount: 4}},
+			result:    []*WcResult{{Path: "file3.txt", LineCount: 4}},
 		},
 		{
 			name:      "wc -w with no matches",
 			path:      []string{"file1.txt"},
 			countWord: true,
-			result:    []WcResult{{Path: "file1.txt", WordCount: 0}},
+			result:    []*WcResult{{Path: "file1.txt", WordCount: 0}},
 		},
 		{
 			name:      "wc -w with single match",
 			path:      []string{"file2.txt"},
 			countWord: true,
-			result:    []WcResult{{Path: "file2.txt", WordCount: 1}},
+			result:    []*WcResult{{Path: "file2.txt", WordCount: 1}},
 		},
 		{
 			name:      "wc -w with multiple matches",
 			path:      []string{"file3.txt"},
 			countWord: true,
-			result:    []WcResult{{Path: "file3.txt", WordCount: 7}},
+			result:    []*WcResult{{Path: "file3.txt", WordCount: 7}},
 		},
 		{
 			name:      "wc -c with no matches",
 			path:      []string{"file1.txt"},
 			countChar: true,
-			result:    []WcResult{{Path: "file1.txt", CharCount: 0}},
+			result:    []*WcResult{{Path: "file1.txt", CharCount: 0}},
 		},
 		{
 			name:      "wc -c with single match",
 			path:      []string{"file2.txt"},
 			countChar: true,
-			result:    []WcResult{{Path: "file2.txt", CharCount: 11}},
+			result:    []*WcResult{{Path: "file2.txt", CharCount: 11}},
 		},
 		{
 			name:      "wc -c with multiple matches",
 			path:      []string{"file3.txt"},
 			countChar: true,
-			result:    []WcResult{{Path: "file3.txt", CharCount: 35}},
+			result:    []*WcResult{{Path: "file3.txt", CharCount: 35}},
 		},
 		{
 			name:      "wc -lc with multiple matches",
 			path:      []string{"file3.txt"},
 			countLine: true,
 			countChar: true,
-			result:    []WcResult{{Path: "file3.txt", LineCount: 4, CharCount: 35}},
+			result:    []*WcResult{{Path: "file3.txt", LineCount: 4, CharCount: 35}},
 		},
 		{
 			name:      "wc -wc with multiple matches",
 			path:      []string{"file3.txt"},
 			countWord: true,
 			countChar: true,
-			result:    []WcResult{{Path: "file3.txt", WordCount: 7, CharCount: 35}},
+			result:    []*WcResult{{Path: "file3.txt", WordCount: 7, CharCount: 35}},
 		},
 		{
 			name:      "wc -lw with multiple matches",
 			path:      []string{"file3.txt"},
 			countLine: true,
 			countWord: true,
-			result:    []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7}},
+			result:    []*WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7}},
 		},
 		{
 			name:      "wc -lwc with multiple matches",
@@ -121,7 +121,7 @@ func TestWc(t *testing.T) {
 			countLine: true,
 			countWord: true,
 			countChar: true,
-			result:    []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+			result:    []*WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
 		},
 		{
 			name:      "wc -lwc with multiple files and multiple matches",
@@ -129,7 +129,7 @@ func TestWc(t *testing.T) {
 			countLine: true,
 			countWord: true,
 			countChar: true,
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 				{Path: "file2.txt", LineCount: 0, WordCount: 1, CharCount: 11},
 				{Path: "total", LineCount: 4, WordCount: 8, CharCount: 46},
@@ -141,7 +141,7 @@ func TestWc(t *testing.T) {
 			countLine: true,
 			countWord: true,
 			countChar: true,
-			result:    []WcResult{{LineCount: 3, WordCount: 4, CharCount: 14}},
+			result:    []*WcResult{{LineCount: 3, WordCount: 4, CharCount: 14}},
 		},
 		{
 			name:      "wc with empty file",
@@ -149,7 +149,7 @@ func TestWc(t *testing.T) {
 			countLine: true,
 			countWord: true,
 			countChar: true,
-			result:    []WcResult{{Path: "file8.txt", LineCount: 0, WordCount: 0, CharCount: 0}},
+			result:    []*WcResult{{Path: "file8.txt", LineCount: 0, WordCount: 0, CharCount: 0}},
 		},
 		{
 			name:      "wc with one empty file and one valid file with text",
@@ -157,7 +157,7 @@ func TestWc(t *testing.T) {
 			countLine: true,
 			countWord: true,
 			countChar: true,
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 				{Path: "file8.txt", LineCount: 0, WordCount: 0, CharCount: 0},
 				{Path: "total", LineCount: 4, WordCount: 7, CharCount: 35},
@@ -169,25 +169,25 @@ func TestWc(t *testing.T) {
 		// 	countLine: true,
 		// 	countWord: true,
 		// 	countChar: true,
-		// 	result:    []WcResult{{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}},
+		// 	result:    []*WcResult{{Path: "file4.txt", LineCount: 2, WordCount: 11, CharCount: 64}},
 		// },
 		{
 			name:   "wc over non-existent file",
 			path:   []string{"non-existent-file.txt"},
 			expErr: fs.ErrNotExist,
-			result: []WcResult{{Err: fs.ErrNotExist}},
+			result: []*WcResult{{Err: fs.ErrNotExist}},
 		},
 		{
 			name:   "wc over a file with permisson error",
 			path:   []string{"file5.txt"},
 			expErr: fs.ErrPermission,
-			result: []WcResult{{Err: fs.ErrPermission}},
+			result: []*WcResult{{Err: fs.ErrPermission}},
 		},
 		{
 			name:   "wc over a directory",
 			path:   []string{"dir1"},
 			expErr: ErrIsDirectory,
-			result: []WcResult{{Err: ErrIsDirectory}},
+			result: []*WcResult{{Err: ErrIsDirectory}},
 		},
 		{
 			name:       "wc with exclude ext flag with one exclude ext",
@@ -196,7 +196,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			excludeExt: []string{"tar"},
-			result:     []WcResult{},
+			result:     []*WcResult{},
 		},
 		{
 			name:       "wc with exclude ext flag with one valid file and one exclude ext",
@@ -205,7 +205,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			excludeExt: []string{"tar"},
-			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+			result:     []*WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
 		},
 		{
 			name:       "wc with exclude ext flag with two valid file and one exclude ext",
@@ -214,7 +214,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			excludeExt: []string{"tar"},
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 				{Path: "file2.txt", LineCount: 0, WordCount: 1, CharCount: 11},
 				{Path: "total", LineCount: 4, WordCount: 8, CharCount: 46},
@@ -227,7 +227,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			excludeExt: []string{"jpg", "mov", "png"},
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 			},
 		},
@@ -238,7 +238,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			includeExt: []string{"txt"},
-			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+			result:     []*WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
 		},
 		{
 			name:       "wc with include ext flag with one other ext and one include ext",
@@ -247,7 +247,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			includeExt: []string{"txt"},
-			result:     []WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
+			result:     []*WcResult{{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35}},
 		},
 		{
 			name:       "wc with include ext flag with two other ext and one include ext",
@@ -256,7 +256,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			includeExt: []string{"tar"},
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file7.tar", LineCount: 0, WordCount: 3, CharCount: 12},
 			},
 		},
@@ -267,7 +267,7 @@ func TestWc(t *testing.T) {
 			countWord:  true,
 			countChar:  true,
 			includeExt: []string{"txt", "md"},
-			result: []WcResult{
+			result: []*WcResult{
 				{Path: "file3.txt", LineCount: 4, WordCount: 7, CharCount: 35},
 				{Path: "file12.md", LineCount: 0, WordCount: 3, CharCount: 13},
 				{Path: "total", LineCount: 4, WordCount: 10, CharCount: 48},
@@ -278,9 +278,9 @@ func TestWc(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			want := tc.result
-			option := []WcOption{}
+			option := []*WcOption{}
 			for _, p := range tc.path {
-				option = append(option, WcOption{
+				option = append(option, &WcOption{
 					OrigPath:   p,
 					Path:       p,
 					CountLine:  tc.countLine,
@@ -292,7 +292,7 @@ func TestWc(t *testing.T) {
 			}
 
 			if tc.path == nil {
-				option = append(option, WcOption{
+				option = append(option, &WcOption{
 					Stdin:     bytes.NewReader(tc.stdin),
 					CountLine: tc.countLine,
 					CountWord: tc.countWord,
@@ -403,7 +403,7 @@ func TestCount(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := count(tc.reader, tc.option)
+			result, err := count(tc.reader, &tc.option)
 
 			if tc.expErr != nil {
 				if err == nil {
@@ -506,7 +506,7 @@ func TestGetReader(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			reader, cleanup, err := getReader(testFS, tc.option)
+			reader, cleanup, err := getReader(testFS, &tc.option)
 			if tc.expErr != nil {
 				if err == nil {
 					t.Fatalf("Expected error %q but got nil", tc.expErr.Error())
@@ -612,7 +612,7 @@ func TestIsValid(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			gotOk, gotErr := isValid(testFS, tc.option)
+			gotOk, gotErr := isValid(testFS, &tc.option)
 
 			if tc.expErr != nil {
 				if gotErr == nil {
@@ -641,12 +641,12 @@ func TestIsValid(t *testing.T) {
 func TestCalcTotal(t *testing.T) {
 	tt := []struct {
 		name   string
-		input  []WcResult
+		input  []*WcResult
 		expOut WcResult
 	}{
 		{
 			name: "nomal case with all non-zero fields",
-			input: []WcResult{
+			input: []*WcResult{
 				{
 					LineCount: 1,
 					WordCount: 2,
@@ -672,7 +672,7 @@ func TestCalcTotal(t *testing.T) {
 		},
 		{
 			name: "nomal case with all zero fields",
-			input: []WcResult{
+			input: []*WcResult{
 				{
 					LineCount: 0,
 					WordCount: 0,
@@ -693,7 +693,7 @@ func TestCalcTotal(t *testing.T) {
 		},
 		{
 			name:  "error case with no result elements",
-			input: []WcResult{},
+			input: []*WcResult{},
 			expOut: WcResult{
 				Path: "total",
 			},

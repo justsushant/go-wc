@@ -222,7 +222,7 @@ func TestPrintResult(t *testing.T) {
 
 	tt := []struct {
 		name            string
-		result          []wc.WcResult
+		result          []*wc.WcResult
 		input           WcInput
 		expOut          bool
 		expTextInStdOut string
@@ -230,7 +230,7 @@ func TestPrintResult(t *testing.T) {
 	}{
 		{
 			name: "normal case/case with no errors",
-			result: []wc.WcResult{
+			result: []*wc.WcResult{
 				{
 					Path:      "qwerty",
 					LineCount: 8,
@@ -263,7 +263,7 @@ func TestPrintResult(t *testing.T) {
 		},
 		{
 			name: "case with one error",
-			result: []wc.WcResult{
+			result: []*wc.WcResult{
 				{
 					Path:      "qwerty",
 					LineCount: 8,
@@ -299,7 +299,7 @@ func TestPrintResult(t *testing.T) {
 		},
 		{
 			name: "case with only error",
-			result: []wc.WcResult{
+			result: []*wc.WcResult{
 				{
 					Err: errors.New("sample error here"),
 				},

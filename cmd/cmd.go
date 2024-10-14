@@ -30,7 +30,7 @@ func run(fSys fs.FS, input *WcInput) bool {
 		input.charCount = true
 	}
 
-	option := []wc.WcOption{}
+	option := []*wc.WcOption{}
 	for _, filePath := range input.files {
 		relPath, err := getFullPath(fSys, filePath)
 		if err != nil {
@@ -38,7 +38,7 @@ func run(fSys fs.FS, input *WcInput) bool {
 			panic("failed to find the path: " + filePath + " " + err.Error())
 		}
 
-		option = append(option, wc.WcOption{
+		option = append(option, &wc.WcOption{
 			OrigPath:   filePath,
 			Path:       relPath,
 			CountLine:  input.lineCount,
@@ -49,7 +49,7 @@ func run(fSys fs.FS, input *WcInput) bool {
 		})
 	}
 	if len(input.files) == 0 {
-		option = append(option, wc.WcOption{
+		option = append(option, &wc.WcOption{
 			Stdin:     input.stdin,
 			CountLine: input.lineCount,
 			CountWord: input.wordCount,
@@ -62,7 +62,7 @@ func run(fSys fs.FS, input *WcInput) bool {
 	return printResult(result, input)
 }
 
-func printResult(result []wc.WcResult, input *WcInput) bool {
+func printResult(result []*wc.WcResult, input *WcInput) bool {
 	errFoundFlag := false
 	for _, res := range result {
 		if res.Err != nil {
