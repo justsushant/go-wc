@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -27,14 +28,33 @@ var rootCmd = &cobra.Command{
 	Short: "command line program that implements Unix wc like functionality",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) { 
+	Run: func(cmd *cobra.Command, args []string) {
 		fs := os.DirFS("/")
 
 		lineCount, _ := cmd.Flags().GetBool("line")
 		wordCount, _ := cmd.Flags().GetBool("word")
 		charCount, _ := cmd.Flags().GetBool("char")
+		includeExt, _ := cmd.Flags().GetString("include-files")
+		excludeExt, _ := cmd.Flags().GetString("exclude-files")
 
-		err := run(fs, args, lineCount, wordCount, charCount, cmd.InOrStdin() ,cmd.OutOrStdout(), cmd.ErrOrStderr())
+		// centralises all the user input in a single constuct
+		input := &WcInput{
+			files:     args,
+			lineCount: lineCount,
+			wordCount: wordCount,
+			charCount: charCount,
+			stdin:     cmd.InOrStdin(),
+			stdout:    cmd.OutOrStdout(),
+			stderr:    cmd.ErrOrStderr(),
+		}
+		if includeExt != "" {
+			input.includeExt = strings.Split(includeExt, ",")
+		}
+		if excludeExt != "" {
+			input.excludeExt = strings.Split(excludeExt, ",")
+		}
+
+		err := run(fs, input)
 
 		if !err {
 			os.Exit(1)
@@ -68,4 +88,6 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("line", "l", false, "show line count")
 	rootCmd.PersistentFlags().BoolP("word", "w", false, "show word count")
 	rootCmd.PersistentFlags().BoolP("char", "c", false, "show char count")
+	rootCmd.PersistentFlags().StringP("include-files", "i", "", "only include relevant file types")
+	rootCmd.PersistentFlags().StringP("exclude-files", "e", "", "exclude all provided file types")
 }
